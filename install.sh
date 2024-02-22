@@ -10,10 +10,11 @@ SCRIPT_GROUP="100"
 echo "Cloning repository from GitHub..."
 git clone "$REPO_URL"
 
-echo "Moving files to appropriate locations..."
+echo "Moving files to $INSTALL_DIR."
 sudo mkdir -p "$INSTALL_DIR"
 sudo cp -f "$REMOTEIO_DIR/remoteio_server.py" "$INSTALL_DIR/remoteio_server.py"
 sudo cp -f "$REMOTEIO_DIR/remoteio_client.py" "$INSTALL_DIR/remoteio_client.py"
+echo "Moving service file to $SERVICE_DIR."
 sudo cp -f "$REMOTEIO_DIR/remoteiod.service" "$SERVICE_DIR/remoteiod.service"
 sudo chown "$SCRIPT_USER":"$SCRIPT_GROUP" "$INSTALL_DIR/remoteio_server.py" "$INSTALL_DIR/remoteio_client.py"
 
