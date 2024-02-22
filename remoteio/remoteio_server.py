@@ -61,11 +61,11 @@ def handle_client(conn):
             logger.error(f"Error: {e}")
     conn.close()
 
-def main():
+def run_server(port=PORT):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind(('0.0.0.0', PORT))
+    server_socket.bind(('0.0.0.0', port))
     server_socket.listen(5)
-    logger.info(f"Server started, listening on port {PORT}...")
+    logger.info(f"Server started, listening on port {port}...")
 
     while True:
         conn, addr = server_socket.accept()
@@ -73,7 +73,8 @@ def main():
         client_handler = threading.Thread(target=handle_client, args=(conn,))
         client_handler.start()
 
+# Run the server
 if __name__ == "__main__":
-    main()
+    run_server(port=8509)
 
 

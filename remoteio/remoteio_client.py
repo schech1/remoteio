@@ -1,4 +1,5 @@
 import socket
+import time
 
 class RemoteServer:
     def __init__(self, server_ip, server_port):
@@ -43,8 +44,9 @@ if __name__ == "__main__":
     server_port = 8509
 
     remote_server = RemoteServer(server_ip, server_port)
-    remote_pin = remote_server.pin(7, 'b')
+    remote_pin = remote_server.pin(7, 'b') # Use BOARD numbering
+    # remote_pin = remote_server.pin(4, 'g') # Use GPIO numbering
     remote_pin.time(2000) # Time in ms until switch off
-    remote_pin.on()  # Turn on the pin with the applied settings
-    #remote_pin.off()  # Turn off the pin
+    remote_pin.on()
+   # remote_pin.off()
     remote_server.close()

@@ -2,7 +2,7 @@
 A Raspberry Pi GPIO remote control based on gpiozero
 
 
-## Installation
+## Install remote server as deamon
 Use this all-in-one command to install remoteio as deamon on port `8509`.
 If remoteio is already installed, this command will update all files.
 ```
@@ -10,12 +10,41 @@ bash -c "$(wget -qLO - https://github.com/schech1/remoteio/raw/master/install.sh
 
 ```
 
-## Client usage
+## Install using pip
+```
+pip install remoteio
+```
+When using pip, the server needs to be set up manually. 
+See the examples below.
+
+
+
+## Server usage
+Start a remote server on port `1234`.
+If no port is specified default port `8509` will be used
 
 ```
-server_ip = "192.168.1.38"
-server_port = 8509
-remote_server = RemoteServer(server_ip, server_port)
+from remoteio import run_server
+
+if __name__ == "__main__":
+    run_server(port=1234)
+
+```
+
+
+## Client usage
+```
+from remoteio import RemoteServer
+
+if __name__ == "__main__":
+    server_ip = "192.168.1.38"
+    server_port = 1234
+
+    remote_server = RemoteServer(server_ip, server_port)
+    remote_pin = remote_server.pin(7, 'b')
+    remote_pin.time(2000)
+    remote_pin.on()
+    remote_server.close()
 ```
 
 ### Use Board numbering
@@ -24,7 +53,7 @@ remote_pin = remote_server.pin(7, 'b') # Use physical board numbering
 ```
 ### Use GPIO numbering
 ```
-remote_pin = remote_server.pin(7, 'g') # Use GPIO numbering (e.g. GPIO7)
+remote_pin = remote_server.pin(4, 'g') # Use GPIO numbering (e.g. GPIO4)
 ```
 
 ```
@@ -36,7 +65,5 @@ remote_pin.on()
 
 # Turn off the pin
 remote_pin.off()  
-
-remote_server.close()
 
 ```
