@@ -5,7 +5,7 @@ import time
 import logging
 
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(name="remoteio")
 
 PIN_NUMBERINGS=['b', 'g'] # b: Board numbering, g = GPIO numbering
@@ -48,7 +48,7 @@ def handle_client(conn):
                     time.sleep(time_ms)
                     led.off()
                     logger.debug(f"Pin {pin} ({numbering}) switched off")
-                    
+
             elif status == "off":
                 led.off()
             else:
