@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = '1.0.3' 
+VERSION = '1.0.4' 
 DESCRIPTION = 'remoteio - Remote GPIO control '
 LONG_DESCRIPTION = 'A Raspberry Pi GPIO remote control based on gpiozero'
 

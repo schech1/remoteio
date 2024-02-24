@@ -43,9 +43,10 @@ if __name__ == "__main__":
     server_port = 1234
 
     remote_server = RemoteServer(server_ip, server_port)
-    remote_pin = remote_server.pin(8, 'b')
+    remote_pin = remote_server.pin(7, 'b')
     remote_pin.on(time_ms=2000) # Time until switch off
     remote_pin.blink() # Blink LED
+    remote_pin.pulse() # Pulse LED
     remote_pin.off()
     remote_server.close()
 ```
@@ -59,17 +60,3 @@ remote_pin = remote_server.pin(7, 'b') # Use physical board numbering
 remote_pin = remote_server.pin(4, 'g') # Use GPIO numbering (e.g. GPIO4)
 ```
 
-```
-# Time in ms until switch off
-remote_pin.on(time_ms=2000)
-
-# Turn on the pin 
-remote_pin.on()   
-
-# Blink the pin
-remote_pin.blink()  
-
-# Turn off the pin
-remote_pin.off()  
-
-```

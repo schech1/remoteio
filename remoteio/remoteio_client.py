@@ -38,6 +38,11 @@ class RemotePin:
         cmd = self.__create_command("blink")
         self.__send_command(cmd)
         return self
+    
+    def pulse(self):
+        cmd = self.__create_command("pulse")
+        self.__send_command(cmd)
+        return self
 
     def off(self):
         cmd = self.__create_command("off")

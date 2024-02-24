@@ -19,6 +19,7 @@ process_command = {
     "on": lambda led, time_ms: led.on() if int(time_ms) <= 0 else handle_timer(led, time_ms),
     "off": lambda led, time_ms: led.off(),
     "blink": lambda led, time_ms: led.blink(),
+    "pulse": lambda led, time_ms: led.pulse(),
 }
 
 def handle_timer(led, time_ms):
@@ -73,7 +74,7 @@ def run_server():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind(('0.0.0.0', PORT))
     server_socket.listen(5)
-    logger.info(f"Server started, listening on port {PORT}...")
+    logger.info(f"remoteio listening on port {PORT}...")
 
     while True:
         conn, addr = server_socket.accept()
