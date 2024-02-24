@@ -1,5 +1,5 @@
 import socket
-from gpiozero import LED
+from gpiozero import LED, PWMLED
 import threading
 import time
 import logging
@@ -30,11 +30,17 @@ def handle_timer(led, time_ms):
 
 
 # Create gpiozero LED objects based on numbering system
-def create_led(numbering, pin_number):
+def create_led(numbering, pin_number, command):
     if numbering.lower() == 'b':
-        return LED("BOARD" + str(pin_number))
+        if command == "pulse": 
+            return PWMLED("BOARD" + str(pin_number)) 
+        else:
+            return LED("BOARD" + str(pin_number))  
     elif numbering.lower() == 'g':
-        return LED(pin_number, pin_factory=None)
+        if command == "pulse":
+            return PWMLED(pin_number, pin_factory=None)
+        else:
+            return LED(pin_number, pin_factory=None)
     else:
         logger.error(f"Invalid numbering system. Use {PIN_NUMBERINGS}")
 
