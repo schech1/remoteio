@@ -14,6 +14,20 @@ PORT = 8509
 # Dictionary to store LED instances for each pin number
 led_dict = {}
 
+# Define a dictionary to map status to LED actions
+process_command = {
+    "on": lambda led, time_ms: led.on() if int(time_ms) <= 0 else handle_timer(led, time_ms),
+    "off": lambda led, time_ms: led.off(),
+    "blink": lambda led, time_ms: led.blink(),
+}
+
+def handle_timer(led, time_ms):
+    time_ms = float(time_ms) / 1000.0
+    led.on()
+    time.sleep(time_ms)
+    led.off()
+
+
 # Create gpiozero LED objects based on numbering system
 def create_led(numbering, pin_number):
     if numbering.lower() == 'b':
@@ -31,29 +45,23 @@ def handle_client(conn):
         if not data:
             break
         try:
-            numbering, pin, status, time_ms = map(str.strip, data.split())
+            logger.debug(data)
+            numbering, pin, command, time_ms = map(str.strip, data.split())
 
             # Create or retrieve LED instance for the specified pin number
             if pin not in led_dict:
                 led_dict[pin] = create_led(numbering, pin)
             led = led_dict[pin]
 
-            logger.info(f"Pin: {pin}, State: {status}, Time: {time_ms}")
+            logger.info(f"Pin: {pin}({numbering}), State: {command}, Time: {time_ms}")
 
-            if status == "on":
-                led.on()
-
-                if float(time_ms) > 0:
-                    time_ms = float(time_ms) / 1000.0
-                    time.sleep(time_ms)
-                    led.off()
-                    logger.debug(f"Pin {pin} ({numbering}) switched off")
-
-            elif status == "off":
-                led.off()
-            else:
-                logger.error("Invalid status, please use 'on' or 'off'")
+            # Check if status is valid
+            if command not in process_command:
+                logger.error("Invalid command")
                 continue
+
+            # Execute gpio action 
+            process_command[command](led, time_ms)
  
         except ValueError as e:
             logger.error(e)
@@ -61,11 +69,11 @@ def handle_client(conn):
             logger.error(f"Error: {e}")
     conn.close()
 
-def run_server(port=PORT):
+def run_server():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind(('0.0.0.0', port))
+    server_socket.bind(('0.0.0.0', PORT))
     server_socket.listen(5)
-    logger.info(f"Server started, listening on port {port}...")
+    logger.info(f"Server started, listening on port {PORT}...")
 
     while True:
         conn, addr = server_socket.accept()
@@ -73,8 +81,7 @@ def run_server(port=PORT):
         client_handler = threading.Thread(target=handle_client, args=(conn,))
         client_handler.start()
 
-# Run the server
 if __name__ == "__main__":
-    run_server(port=8509)
+    run_server()
 
 
