@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     remote_server = RemoteServer(server_ip, server_port)
     remote_pin = remote_server.pin(7, 'b')
-    remote_pin.on(time_ms=2000) # Time until switch off
+    remote_pin.on(time_ms=2000) # (Optional) Time until switch off
     remote_pin.blink() # Blink LED
     remote_pin.pulse() # Pulse LED
     remote_pin.off()
