@@ -51,7 +51,7 @@ def handle_client(conn):
 
             # Create or retrieve LED instance for the specified pin number
             if pin not in led_dict:
-                led_dict[pin] = create_led(numbering, pin, command)
+                led_dict[pin] = create_led(numbering, pin)
             led = led_dict[pin]
 
             logger.info(f"Pin: {pin}({numbering}), State: {command}, Time: {time_ms}")
