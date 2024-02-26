@@ -1,8 +1,11 @@
 from setuptools import setup, find_packages
 
-VERSION = '1.0.8' 
-DESCRIPTION = 'remoteio - Remote GPIO control '
-LONG_DESCRIPTION = 'A Raspberry Pi GPIO remote control based on gpiozero'
+VERSION = '1.0.12' 
+DESCRIPTION = 'remoteio - Remote GPIO control'
+
+# Read the contents of  README file
+with open('README.md') as f:
+    long_description = f.read()
 
 
 setup(
@@ -11,7 +14,8 @@ setup(
         author="Christoph Scherbeck",
         author_email="christoph@scherbeck.tech",
         description=DESCRIPTION,
-        long_description=LONG_DESCRIPTION,
+        long_description=long_description,
+        long_description_content_type='text/markdown',  # This is important!
         packages=find_packages(),
         install_requires=["gpiozero"], 
         
