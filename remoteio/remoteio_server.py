@@ -40,35 +40,46 @@ def create_led(numbering, pin_number):
 
 # Handle client requests
 def handle_client(conn):
-    while True:
-        data = conn.recv(1024).decode().strip()
-        logger.info(data)
-        if not data:
-            break
-        try:
-            logger.debug(data)
-            numbering, pin, command, time_ms = map(str.strip, data.split())
+    try:
+        while True:
+            data = conn.recv(1024).decode().strip()
+            logger.info(data)
+            if not data:
+                break
+            try:
+                logger.debug(data)
+                numbering, pin, command, time_ms = map(str.strip, data.split())
 
-            # Create or retrieve LED instance for the specified pin number
-            if pin not in led_dict:
-                led_dict[pin] = create_led(numbering, pin)
-            led = led_dict[pin]
+                # Create or retrieve LED instance for the specified pin number
+                if pin not in led_dict:
+                    led_dict[pin] = create_led(numbering, pin)
+                led = led_dict[pin]
 
-            logger.info(f"Pin: {pin}({numbering}), State: {command}, Time: {time_ms}")
+                logger.info(f"Pin: {pin}({numbering}), State: {command}, Time: {time_ms}")
 
-            # Check if status is valid
-            if command not in process_command:
-                logger.error("Invalid command")
-                continue
+                # Check if status is valid
+                if command not in process_command:
+                    logger.error("Invalid command")
+                    continue
 
-            # Execute gpio action 
-            process_command[command](led, time_ms)
- 
-        except ValueError as e:
-            logger.error(e)
-        except Exception as e:
-            logger.error(f"Error: {e}")
-    conn.close()
+                # Execute gpio action 
+                process_command[command](led, time_ms)
+
+            except ValueError as e:
+                logger.error(e)
+            except Exception as e:
+                logger.error(f"Error: {e}")
+    finally:
+        # Cleanup actions on disconnect
+        logger.info(f"Disconnected from client")
+        
+        # Close all pin instances in led_dict
+        for pin, led in led_dict.items():
+            led.close()
+            logger.info(f"Released pin {pin}")
+        led_dict.clear()
+        conn.close()
+
 
 def run_server():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
