@@ -23,6 +23,15 @@ process_command = {
 }
 
 def handle_timer(led, time_ms):
+    """    Handle a timer for turning on and off an LED.
+
+    This function takes an LED object and a time in milliseconds, converts the time to seconds, turns on the LED, waits for the specified time, and then turns off the LED.
+
+    Args:
+        led: An object representing the LED.
+        time_ms (int): The time in milliseconds for which the LED should remain on.
+    """
+
     time_ms = float(time_ms) / 1000.0
     led.on()
     time.sleep(time_ms)
@@ -31,6 +40,19 @@ def handle_timer(led, time_ms):
 
 # Create gpiozero LED objects based on numbering system
 def create_led(numbering, pin_number):
+    """    Create gpiozero LED objects based on the numbering system.
+
+    Args:
+        numbering (str): The numbering system to be used. It can be 'b' for BOARD or 'g' for BCM.
+        pin_number (int): The pin number to be used.
+
+    Returns:
+        PWMLED: The gpiozero PWMLED object based on the specified numbering system and pin number.
+
+    Raises:
+        ValueError: If the input numbering system is not 'b' or 'g'.
+    """
+
     if numbering.lower() == 'b':
         return PWMLED("BOARD" + str(pin_number))
     elif numbering.lower() == 'g':
@@ -40,6 +62,20 @@ def create_led(numbering, pin_number):
 
 # Handle client requests
 def handle_client(conn):
+    """    Handle client requests.
+
+    This function handles client requests by receiving data from the connection, processing the data, and executing
+    corresponding actions based on the received commands. It also performs cleanup actions upon disconnection.
+
+    Args:
+        conn (socket): The connection object for communicating with the client.
+
+
+    Raises:
+        ValueError: If the data cannot be parsed into the required format.
+        Exception: If any other unexpected error occurs during data processing or action execution.
+    """
+
     try:
         while True:
             data = conn.recv(1024).decode().strip()
@@ -82,6 +118,11 @@ def handle_client(conn):
 
 
 def run_server():
+    """    Run a server to handle incoming connections.
+
+    This function creates a server socket and listens for incoming connections. When a connection is established, it spawns a new thread to handle the client.
+    """
+
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind(('0.0.0.0', PORT))
     server_socket.listen(5)
