@@ -1,12 +1,21 @@
 from remoteio import RemoteServer
+from time import sleep
 
 if __name__ == "__main__":
+    time = 2000
     server_ip = "192.168.1.38"
     server_port = 1234
 
+    # Create instance of remote Raspberry Pi
     remote_server = RemoteServer(server_ip, server_port)
     remote_pin = remote_server.pin(8, 'b')
-    remote_pin.on(time_ms=2000) # Time until switch off
-    remote_pin.blink() # Blink LED
+
+    # Demo features
+    remote_pin.on(time_ms=time) # Time until switch off
+    sleep(time/1000)
+    remote_pin.blink()
+    sleep(1)
+    remote_pin.pulse()
+    sleep(1)
     remote_pin.off()
     remote_server.close()
