@@ -4,20 +4,20 @@ A Raspberry Pi GPIO remote control based on gpiozero
 https://github.com/gpiozero/gpiozero
 
 
-## Install remote server as deamon
+## Server (remote Raspberry Pi)
 Use this all-in-one command to install remoteio as deamon on port `8509`.
-If remoteio is already installed, this command will update all files.
+The server can be updated with this command.
 ```
 bash -c "$(wget -qLO - https://github.com/schech1/remoteio/raw/master/install.sh)"
 
 ```
 
-## Install using pip
+##  Using pip
 ```
 pip install remoteio
 ```
-When using pip, the server needs to be set up manually. 
-See the examples below.
+When you want to create the server by yourself, you can install the library via
+pip and use the examples below, for server- and client usage.
 
 
 
