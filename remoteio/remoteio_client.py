@@ -140,13 +140,12 @@ if __name__ == "__main__":
         remote_pi.execute()
         time.sleep(15.0)
         # Sonderfunktionen
-        remote_pin1.aktiv=False
-        remote_pin2.aktiv=False
+        
         
         remote_pin.on(time_ms=20000)
         remote_pi.execute()
-        while True:
-            pass
+        #while True:
+        #   pass
     except Exception as e:
         logger.info(str(e))
     finally:
