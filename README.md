@@ -1,3 +1,9 @@
+This is a change of the remoteio code that allows the simultaneous proceeding of remote pins.
+You can ask for on,off,blink,pulse of several pins and then proceed them by the execute-function. See the example
+Controller.py
+After proceeding several pins by execute you can proceed a part of them newly by execute or other ones after defining
+before. Syntax is that of original remoteio. But you must use execute to proceed.
+
 # remoteio
 A Raspberry Pi GPIO remote control based on gpiozero
 
