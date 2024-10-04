@@ -3,7 +3,7 @@ A Raspberry Pi GPIO remote control based on gpiozero
 
 https://github.com/gpiozero/gpiozero
 
-# New behavior remoteio: simultaneity
+# New behavior of remoteio: simultaneity
 When remoteio proceeds 2 pins, the second pin must wait until the first one has made his work on the server. This may take time, if the first pin has a long timer and the second pin cannot start its work.
 A pin blocks itself in the same way. In this modification of remoteio, different pins can work simultaneously. If a pin has two tasks and the second one is asked to start before the first one has finished,
 the second one interrupts the first one.
