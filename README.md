@@ -12,7 +12,7 @@ The main modifications are the use of
   2. an own thread for each pin for treating
   3. thread safe queues for each pin as input to the pin-specific threads
 
-Further, the internal pin numbering is 'b', by the aid of a conversion dictionary. This allows to suppress the establishing of the sam pin two times by different representations by 'b' and 'g'
+Further, the internal pin numbering is 'b', by the aid of a conversion dictionary. This allows to suppress the establishing of the same pin two times by different representations by 'b' and 'g'
 The syntax to operate the pins is the same as that of remoteio.
 
 
