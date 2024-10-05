@@ -1,46 +1,16 @@
 
 import socket
-import threading
 
-PORT=8509   
+   
+from remoteio import PORT
+from remoteio import PIN_MAP_gb
 
-pin_map_gb={
-    0:27,
-    1:28,
-    2:3,
-    3:5,
-    4:7,
-    5:29,
-    6:31,
-    7:26,
-    8:24,
-    9:21,
-    10:19,
-    11:23,
-    12:32,
-    13:33,
-    14:8,
-    15:10,
-    16:36,
-    17:11,
-    18:12,
-    19:35,
-    20:38,
-    21:40,
-    22:15,
-    23:16,
-    24:18,
-    25:22,
-    26:37,
-    27:13
-}
 
 
 
 class RemoteServer:  
 
-    def __init__(self, server_ip, server_port=PORT):   
-        global my_server                                       
+    def __init__(self, server_ip, server_port=PORT):                                 
         self.server_ip = server_ip
         self.server_port = server_port
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -49,15 +19,16 @@ class RemoteServer:
 
     def map_g_to_b(self,pin_number,numbering):
         if numbering=='g':
-            return pin_map_gb[pin_number], 'b'
-            
+            if pin_number in PIN_MAP_gb.keys():
+                return PIN_MAP_gb[pin_number], 'b'
+            else:
+                raise ValueError('((g), ' + str(pin_number) + ') false')    
         if numbering == 'b':
-            if pin_number in pin_map_gb.values():
+            if pin_number in PIN_MAP_gb.values():
                 return pin_number,numbering
             else:
                 raise ValueError('((b), ' + str(pin_number) + ') false')
-        
-
+            
     def pin(self, pin_number, numbering='b'):
         pin_number_new,numbering_new = self.map_g_to_b(pin_number,numbering)
         for p in self._pin_list:
@@ -107,6 +78,14 @@ class RemotePin:
         self.state='off'
         self.time_ms=0
         self.execute()
+
+    def close(self):
+        self.state='close'
+        self.time_ms=0
+        self.execute()
+    
+
+
  
 
 
@@ -125,17 +104,29 @@ if __name__ == "__main__":
 
 
         # 'g ': BCM -B e z e i c h n u n g ( G P I O 2 1 )
-        remote_pin=remote_pi.pin(21,'g')
+        remote_pin=remote_pi.pin(40,'b')
         remote_pin1=remote_pi.pin(20,'g')
         remote_pin2=remote_pi.pin(16,'g')
 
 
         
-        while True:
-            remote_pin.on()
-            remote_pin1.pulse()
-            remote_pin2.blink()
-            time.sleep(20.0)
+        remote_pin.on(time_ms=10000)
+        #remote_pin1.pulse()
+        #remote_pin2.blink()
+
+        
+                    
+        #remote_pin.off()
+        #remote_pin1.off()
+        #remote_pin2.off()
+
+            
+
+            
+
+        #remote_pin.close()
+        #remote_pin1.close()
+        #remote_pin2.close()
         #remote_pin1.pulse()
         #remote_pin2.blink()
 
@@ -148,7 +139,7 @@ if __name__ == "__main__":
         while True:
             pass
     except Exception as e:
-        logger.info(str(e))
+        logger.error(e)
     finally:
         if remote_pi:
             remote_pi.close()

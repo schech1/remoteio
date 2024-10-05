@@ -26,10 +26,8 @@ PIN_NUMBERINGS=['b', 'g'] # b: Board numbering, g = GPIO numbering
 led_dict = {}
 led_que_dict={}
 
-process_command=['on', 'off', 'blink', 'pulse']
-
 # target task function
-def led_off(led,pin):
+def led_off(led):
     led.off()
    
  
@@ -43,24 +41,20 @@ def handle_timer(led):
 
             # letzten Befehl in der Schlange ausführen
             while not qu.empty():
-                text=qu.get()
+                numbering, pin, command, time_ms=qu.get()                
+           
 
-                
-            numbering, pin, command, time_ms=map(str.strip, text.split())       
             time_ms = float(time_ms) / 1000.0
             time_thr=time_ms
-            match command:
-                case 'on':
-                    led.on()
-                case 'off':
-                    led.off()
-                case 'blink':
-                    led.blink()
-                case 'pulse':
-                    led.pulse()
+            try:
+                func=getattr(led,command)
+                func()
+            except:
+                logger.info('command not known: ' + command)
+                return
 
             if time_ms > 0.:
-                t=threading.Timer(time_thr,led_off,[led,pin])
+                t=threading.Timer(time_thr,led_off,[led])
                 t.start()
                 while t.is_alive():
                     if qu.empty():
@@ -133,15 +127,9 @@ def handle_client(conn):
 
                     logger.info(f"Pin: {pin}({numbering}), State: {command}, Time: {time_ms}")
 
-                    # Check if status is valid
-                    if command not in process_command:
-                        logger.error("Invalid command")
-                        continue
-
                     # Execute gpio action 
-                    led_que_dict[led].put(numbering + ' ' + pin + ' ' + command + ' ' + time_ms)
+                    led_que_dict[led].put([numbering,pin,command,time_ms])
                     
-                    #process_command[command](led, time_ms)
             except ValueError as e:
                 logger.error(e)
                 break                       
@@ -153,12 +141,13 @@ def handle_client(conn):
     finally:
         # Cleanup actions on disconnect
         logger.info(f"Disconnected from client")
-        
-        conn.close()
+        if conn:
+            conn.close()
         # System closes leds. Do not make yourself. Furnishes exceptions with traces.
         for pin, led in led_dict.items():
-            led.close()
-            logger.info(f"Released pin {pin}")
+            if not led.closed:
+                led.close()
+                logger.info(f"Released pin {pin}")
                 
      
 
@@ -167,7 +156,7 @@ def handle_client(conn):
 
 def run_server(port=PORT):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind(('', port))          
     server_socket.listen(5)
 
