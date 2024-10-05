@@ -11,6 +11,8 @@ The main modifications are the use of
   1. a list of maps, that allows sending of tasks of several pins to the server
   2. an own thread for each pin for treating
   3. thread safe queues for each pin as input to the pin-specific threads
+  4. a thread.Timer in handle_timer instead of time.sleep in order to make the interruption of a task with a time_ms>0 possible
+  5. the getattr function to find led-funtions only by knowing the name of the function 
 
 Further, the internal pin numbering is 'b', by the aid of a conversion dictionary. This allows to suppress the establishing of the same pin two times by different representations by 'b' and 'g'
 The syntax to operate the pins is the same as that of remoteio.
