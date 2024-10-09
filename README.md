@@ -24,7 +24,7 @@ Main ideas in remote_client.py
    The syntax to operate the pins is the same as that of remoteio.
 2. led.cose() is not allowed
 3. led.blink(tims_ms,arg1,arg2) is allowed, for defining different on and off times.
-4. led.val(arg1) is allowed for a constant light which is not the maximum possible light of a led.
+4. led.value(arg1) is allowed for a constant light which is not the maximum possible light of a led.
 
 
 ## Server (remote Raspberry Pi)
@@ -69,7 +69,9 @@ if __name__ == "__main__":
     remote_pin = remote_server.pin(7, 'b')
     remote_pin.on(time_ms=2000) # (Optional) Time until switch off
     remote_pin.blink() # Blink LED
+    remote_pin.blink(arg1=0.1,arg2=0.1)    # fast blinking
     remote_pin.pulse() # Pulse LED
+    remote_pin.value(arg1=0.5)              # half brightness
     remote_pin.off()
     remote_server.close()
 ```
