@@ -3,6 +3,8 @@ A Raspberry Pi GPIO remote control based on gpiozero
 
 https://github.com/gpiozero/gpiozero
 
+
+# new behavior of remoteio: simultaneous processing of remote pins
 The idea is to use some remote server for manipulating e.g. an idustrial process in the case where you need more pins than the client raspberry pi can offer.
 The bahavior of led.on(),led.off(),led.pulse() on the remote rpi is the same as when the client would perform them itself.
 For industrial processes there is beside constant signal the necessity of impulses. Therefore led.on(time_ms) is possible. Naturally led.pulse(time_ms) and led.blink(time_ms) are also
@@ -25,6 +27,7 @@ Main ideas in remote_client.py
 2. led.cose() is not allowed
 3. led.blink(tims_ms,arg1,arg2) is allowed, for defining different on and off times.
 4. led.value(arg1) is allowed for a constant light which is not the maximum possible light of a led.
+
 
 
 ## Server (remote Raspberry Pi)
