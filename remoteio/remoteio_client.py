@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python3
 import socket
 
    
@@ -40,7 +40,7 @@ class RemoteServer:
         self._pin_list.append(p)
         return p
 
-    def close(self):       
+    def close(self):     
         self.client_socket.close()
 
 class RemotePin:
@@ -51,38 +51,51 @@ class RemotePin:
         self.numbering = numbering
         self.state='off'
         self.time_ms = 0
+        self.arg1=0.0
+        self.arg2=0.0
     
     def execute(self):
         # data transfer
         data=''
-        data += f"{self.numbering} {self.pin_number} {self.state} {self.time_ms} "
+        data += f"{self.numbering} {self.pin_number} {self.state} {self.time_ms} {self.arg1} {self.arg2} "
         self.client_socket.sendall(data.encode())
 
      
-    def on(self, time_ms:int=0):
+    def on(self, time_ms:int=0,arg1:float=0.0,arg2:float=0.0):
         self.state='on'
         self.time_ms=time_ms
+        self.arg1=arg1
+        self.arg2=arg2
         self.execute()
     
-    def blink(self, time_ms:int=0):
+    def blink(self,time_ms:int=0,arg1:float=1.0,arg2:float=1.0):
         self.state='blink'
         self.time_ms=time_ms
+        self.arg1=arg1
+        self.arg2=arg2
         self.execute()
        
-    def pulse(self, time_ms:int=0):
+    def pulse(self, time_ms:int=0, arg1:float=0.0,arg2:float=0.0):
         self.state='pulse'
         self.time_ms=time_ms
+        self.arg1=arg1
+        self.arg2=arg2
+        self.execute() 
+    
+    def value(self, time_ms:int=0, arg1:float=1.0,arg2:float=0.0):
+        self.state='value'
+        self.time_ms=time_ms
+        self.arg1=arg1
+        self.arg2=arg2
         self.execute() 
 
     def off(self):
         self.state='off'
         self.time_ms=0
+        self.arg1=0.0
+        self.arg2=0.0
         self.execute()
 
-    def close(self):
-        self.state='close'
-        self.time_ms=0
-        self.execute()
     
 
 
@@ -93,53 +106,62 @@ class RemotePin:
 if __name__ == "__main__":
     import logging
     import time
+    remote_pi=None
+    remote_pi1=None
     
-    try:  
+    try: 
         logging.basicConfig(level=logging.INFO)
         logger = logging.getLogger(name="remoteio")
         raspi1='raspy5' 
         # erstellt virtuelle Pins auf 2 verschiedenen Raspberry Pis
-        remote_pi=None
-        remote_pi=RemoteServer(raspi1)
+        # 
 
+        #remote_pi=RemoteServer(raspi1,8509)
+        #remote_pi1=RemoteServer(raspi1,8510)
 
         # 'g ': BCM -B e z e i c h n u n g ( G P I O 2 1 )
-        remote_pin=remote_pi.pin(40,'b')
-        remote_pin1=remote_pi.pin(20,'g')
-        remote_pin2=remote_pi.pin(16,'g')
-
-
-        
-        remote_pin.on(time_ms=10000)
-        #remote_pin1.pulse()
-        #remote_pin2.blink()
+        #remote_pin=remote_pi.pin(21,'g')
+        #remote_pin1=remote_pi1.pin(20,'g')
+        #remote_pin2=remote_pi1.pin(36,'b') 
 
         
-                    
-        #remote_pin.off()
-        #remote_pin1.off()
-        #remote_pin2.off()
-
             
+        #remote_pi=RemoteServer(raspi1,8509)
+        #remote_pin=remote_pi.pin(21,'g')
+        #remote_pin1=remote_pi1.pin(20,'g')
+        #remote_pin2=remote_pi1pin(36,'b') 
 
-            
+        remote_pi=RemoteServer(raspi1,8509)
+        remote_pi1=RemoteServer(raspi1,8510)
+        remote_pin=remote_pi.pin(21,'g')
+        remote_pin1=remote_pi1.pin(20,'g')
+        remote_pin2=remote_pi1.pin(36,'b') 
 
-        #remote_pin.close()
-        #remote_pin1.close()
-        #remote_pin2.close()
-        #remote_pin1.pulse()
-        #remote_pin2.blink()
-
-            
-            
-            #remote_pin1.off()
-            #remote_pin2.off()
-
-       
+        for z in range(0,3):
+            remote_pin.on(time_ms=4000)
+            remote_pin.pulse(time_ms=4000,arg1=0.4)
+            remote_pin.blink(time_ms=4000,arg1=01.0,arg2=0.5)
+            remote_pin1.on(time_ms=4000)
+            remote_pin1.pulse(time_ms=4000,arg1=0.4)
+            remote_pin1.blink(time_ms=4000,arg1=01.0,arg2=0.5)
+            remote_pin2.on(time_ms=4000)
+            remote_pin2.pulse(time_ms=4000,arg1=0.4)
+            remote_pin2.blink(time_ms=4000,arg1=01.0,arg2=0.5)
+        
         while True:
             pass
+            #remote_pi.close()
+            #time.sleep(1.0)
+            #remote_pi.close()
+            #time.sleep(15.0)
+        
+        
+        
     except Exception as e:
         logger.error(e)
     finally:
-        if remote_pi:
-            remote_pi.close()
+        pass
+        #if remote_pi:
+        #    remote_pi.close()
+        #if remote_pi1:
+        #    remote_pi1.close()
