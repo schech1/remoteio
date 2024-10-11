@@ -17,5 +17,7 @@ if __name__ == "__main__":
     sleep(1)
     remote_pin.pulse()
     sleep(1)
+    remote_pin.blink(time_ms=4000,arg1=0.1,arg2=0.2)
+    remote_pin.value(time_ms=4000,arg1=0.1)
     remote_pin.off()
     remote_server.close()
