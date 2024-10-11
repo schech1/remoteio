@@ -28,6 +28,8 @@ Main ideas in remote_client.py
 2. led.cose() is not allowed
 3. led.blink(tims_ms,arg1,arg2) is allowed, for defining different on and off times.
 4. led.value(time_ms,arg1) is allowed for a constant light which is not the maximum possible light of a led.
+5. led.off(time_ms) is allowed.
+By the above changes you can fully use the time of the remote server
 
 
 ## Server (remote Raspberry Pi)
