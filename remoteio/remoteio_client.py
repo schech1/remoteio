@@ -85,16 +85,16 @@ class RemotePin:
         self.arg2=arg2
         self.execute() 
     
-    def value(self, time_ms:int=0, arg1:float=1.0,arg2:float=0.0):
+    def value(self, time_ms:int=0, arg1:float=1.0):
         self.state='value'
         self.time_ms=time_ms
         self.arg1=arg1
-        self.arg2=arg2
+        self.arg2=0.0
         self.execute() 
 
-    def off(self):
+    def off(self,time_ms:int=0):
         self.state='off'
-        self.time_ms=0
+        self.time_ms=time_ms
         self.arg1=0.0
         self.arg2=0.0
         self.execute()
@@ -123,24 +123,35 @@ if __name__ == "__main__":
     z=0
     while True:
     # Demo features
-        remote_pin.on(time_ms=1000) # Time until switch off
-        remote_pin1.on(time_ms=1000) # Time until switch off
-        sleep(5)
+        remote_pin.on(time_ms=4000) # Time until switch off
+        remote_pin1.on(time_ms=4000) # Time until switch off
+        remote_pin.off(time_ms=4000) # Time until switch off
+        remote_pin1.off(time_ms=4000) # Time until switch off
+        
+
         remote_pin.blink(time_ms=4000)
         remote_pin1.blink(time_ms=4000)
-        #sleep(4)
+        
+        remote_pin.off(time_ms=4000)
+        remote_pin1.off(time_ms=4000)
+
+
         remote_pin.pulse(time_ms=4000)
         remote_pin1.pulse(time_ms=4000)
-        #sleep(4)
+
+        remote_pin.off(time_ms=4000)
+        remote_pin1.off(time_ms=4000)
+
         remote_pin.blink(time_ms=4000,arg1=0.1,arg2=0.2)
         remote_pin1.blink(time_ms=4000,arg1=0.1,arg2=0.2)
-        #sleep(4)
+        remote_pin.off(time_ms=4000)
+        remote_pin1.off(time_ms=4000)
+
         remote_pin.value(time_ms=4000,arg1=0.1)
         remote_pin1.value(time_ms=4000,arg1=0.1)
-        #sleep(4)
-        remote_pin.off()
-        remote_pin1.off()
-        sleep(4)
+        remote_pin.off(time_ms=4000)
+        remote_pin1.off(time_ms=4000)
+
         #remote_server.close()
         #z=z+1
         
