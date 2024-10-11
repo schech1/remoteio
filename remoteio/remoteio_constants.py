@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 PORT=8509
 PIN_MAP_gb={
     0:27,
