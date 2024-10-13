@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import socket
-
+from time import sleep 
    
 from remoteio import PORT
 from remoteio import PIN_MAP_gb
@@ -43,7 +43,8 @@ class RemoteServer:
         self._pin_list.append(p)
         return p
 
-    def close(self):     
+    def close(self): 
+        sleep(1.0)   
         self.client_socket.close()
 
 class RemotePin:
@@ -114,48 +115,56 @@ if __name__ == "__main__":
     server_ip = "raspy5"
     server_port = 8509
   
-
-    # Create instance of remote Raspberry Pi
-    remote_server = RemoteServer(server_ip, server_port)
     
-    remote_pin = remote_server.pin(21, 'g')
-    remote_pin1 = remote_server.pin(38, 'b')
+    # Create instance of remote Raspberry Pi
+    #remote_server = RemoteServer(server_ip, server_port)
+    
+    #remote_pin = remote_server.pin(21, 'g')
+    #remote_pin1 = remote_server.pin(38, 'b')
+
     z=0
+    while z<10:   
+        # Create instance of remote Raspberry Pi
+        remote_server = RemoteServer(server_ip, server_port)
+        
+        remote_pin = remote_server.pin(21, 'g')
+        remote_pin1 = remote_server.pin(38, 'b') 
+        # Demo features
+        remote_pin.on() 
+        remote_pin1.on() 
+        sleep(4)
+        remote_pin.off() 
+        remote_pin1.off() 
+        sleep(4)        
+
+        remote_pin.blink()
+        remote_pin1.blink()
+        sleep(4)
+        remote_pin.off()
+        remote_pin1.off()
+        sleep(4)
+
+        remote_pin.pulse()
+        remote_pin1.pulse()
+        sleep(4)
+        remote_pin.off()
+        remote_pin1.off()
+        sleep(4)
+        remote_pin.blink(arg1=0.1,arg2=0.2)
+        remote_pin1.blink(arg1=0.1,arg2=0.2)
+        sleep(4)
+        remote_pin.off()
+        remote_pin1.off()
+        sleep(4)
+        remote_pin.value(arg1=0.1)
+        remote_pin1.value(arg1=0.1)
+        sleep(4)
+        remote_pin.off()
+        remote_pin1.off()
+        remote_server.close()   
+        sleep(4)
+        z=z+1
     while True:
-    # Demo features
-        remote_pin.on(time_ms=4000) # Time until switch off
-        remote_pin1.on(time_ms=4000) # Time until switch off
-        remote_pin.off(time_ms=4000) # Time until switch off
-        remote_pin1.off(time_ms=4000) # Time until switch off
-        
-
-        remote_pin.blink(time_ms=4000)
-        remote_pin1.blink(time_ms=4000)
-        
-        remote_pin.off(time_ms=4000)
-        remote_pin1.off(time_ms=4000)
-
-
-        remote_pin.pulse(time_ms=4000)
-        remote_pin1.pulse(time_ms=4000)
-
-        remote_pin.off(time_ms=4000)
-        remote_pin1.off(time_ms=4000)
-
-        remote_pin.blink(time_ms=4000,arg1=0.1,arg2=0.2)
-        remote_pin1.blink(time_ms=4000,arg1=0.1,arg2=0.2)
-        remote_pin.off(time_ms=4000)
-        remote_pin1.off(time_ms=4000)
-
-        remote_pin.value(time_ms=4000,arg1=0.1)
-        remote_pin1.value(time_ms=4000,arg1=0.1)
-        remote_pin.off(time_ms=4000)
-        remote_pin1.off(time_ms=4000)
-
-        #remote_server.close()
-        #z=z+1
-        
-    while True:
-        pass
+       pass
             
 
