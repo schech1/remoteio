@@ -57,21 +57,36 @@ class RemotePin:
         self.time_ms = 0
         self.arg1=0.0
         self.arg2=0.0
+        self.create()
     
     def execute(self):
         # data transfer
         data=''
         data += f"{self.numbering} {self.pin_number} {self.state} {self.time_ms} {self.arg1} {self.arg2} "
         self.client_socket.sendall(data.encode())
+        ret=self.client_socket.recv(1024).decode()
+        if not ret:
+            raise RuntimeError('Server has terminated connection')
+        if ret[0:1] =='?':
+            if ret != f"? command ignored: {self.state}":
+             raise RuntimeError(ret)
+
 
      
-    def on(self, time_ms:int=0,arg1:float=0.0,arg2:float=0.0):
-        self.state='on'
-        self.time_ms=time_ms
-        self.arg1=arg1
-        self.arg2=arg2
+    def create(self):
+        self.state='create'
+        self.time_ms=0
+        self.arg1=0.
+        self.arg2=0.
         self.execute()
-    
+
+    def on(self, time_ms:int=0,arg1:float=0.0,arg2:float=0.0):
+            self.state='on'
+            self.time_ms=time_ms
+            self.arg1=arg1
+            self.arg2=arg2
+            self.execute()
+        
     def blink(self,time_ms:int=0,arg1:float=1.0,arg2:float=1.0):
         self.state='blink'
         self.time_ms=time_ms
@@ -96,6 +111,13 @@ class RemotePin:
     def off(self,time_ms:int=0):
         self.state='off'
         self.time_ms=time_ms
+        self.arg1=0.0
+        self.arg2=0.0
+        self.execute()
+
+    def close(self):
+        self.state='close'
+        self.time_ms=0
         self.arg1=0.0
         self.arg2=0.0
         self.execute()
@@ -126,43 +148,46 @@ if __name__ == "__main__":
     while z<10:   
         # Create instance of remote Raspberry Pi
         remote_server = RemoteServer(server_ip, server_port)
-        
+        remote_pin1 = remote_server.pin(38, 'b')
         remote_pin = remote_server.pin(21, 'g')
-        remote_pin1 = remote_server.pin(38, 'b') 
+        #remote_pin1 = remote_server.pin(38, 'b') 
         # Demo features
-        remote_pin.on() 
-        remote_pin1.on() 
+        remote_pin.on(time_ms=4000) 
+        remote_pin1.on(time_ms=4000) 
         sleep(4)
-        remote_pin.off() 
-        remote_pin1.off() 
+        #remote_pin.close()
+        #remote_pin1.close()
+        #sleep(4)
+        remote_pin.off(time_ms=4000) 
+        remote_pin1.off(time_ms=4000) 
         sleep(4)        
 
-        remote_pin.blink()
-        remote_pin1.blink()
+        remote_pin.blink(time_ms=4000)
+        remote_pin1.blink(time_ms=4000)
         sleep(4)
-        remote_pin.off()
-        remote_pin1.off()
+        remote_pin.off (time_ms=4000)
+        remote_pin1.off (time_ms=4000)
         sleep(4)
 
-        remote_pin.pulse()
-        remote_pin1.pulse()
+        remote_pin.pulse (time_ms=4000)
+        remote_pin1.pulse (time_ms=4000)
         sleep(4)
-        remote_pin.off()
-        remote_pin1.off()
+        remote_pin.off (time_ms=4000)
+        remote_pin1.off (time_ms=4000)
         sleep(4)
-        remote_pin.blink(arg1=0.1,arg2=0.2)
-        remote_pin1.blink(arg1=0.1,arg2=0.2)
+        remote_pin.blink(time_ms=4000,arg1=0.1,arg2=0.2)
+        remote_pin1.blink(time_ms=4000,arg1=0.1,arg2=0.2)
         sleep(4)
-        remote_pin.off()
-        remote_pin1.off()
+        remote_pin.off (time_ms=4000)
+        remote_pin1.off (time_ms=4000)
         sleep(4)
-        remote_pin.value(arg1=0.1)
-        remote_pin1.value(arg1=0.1)
+        remote_pin.value(time_ms=4000,arg1=0.1)
+        remote_pin1.value(time_ms=4000,arg1=0.1)
         sleep(4)
-        remote_pin.off()
-        remote_pin1.off()
-        remote_server.close()   
+        remote_pin.off (time_ms=4000)
+        remote_pin1.off (time_ms=4000)
         sleep(4)
+        remote_server.close()  
         z=z+1
     while True:
        pass
