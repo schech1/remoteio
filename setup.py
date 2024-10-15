@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = '1.0.12' 
+VERSION = '2.1' 
 DESCRIPTION = 'remoteio - Remote GPIO control'
 
 # Read the contents of  README file
