@@ -79,6 +79,7 @@ remote_pin = remote_LED(remote_server,4, 'g') # Use GPIO numbering (e.g. GPIO4)
 ```
 ### GPIO numbering GPIO is Default
 ...
+
 remote_pin = remote_LED(remote_server,4)  # Use GPIO numbering (e.g. GPIO4)
 ...
 
