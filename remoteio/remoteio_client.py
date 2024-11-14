@@ -1,195 +1,401 @@
 #!/usr/bin/env python3
 import socket
 from time import sleep 
-   
-from remoteio import PORT
-from remoteio import PIN_MAP_gb
+import builtins
+from gpiozero import Device 
+from threading import Thread,Event,Timer
+from multiprocessing import Lock
+from remoteio import PORT, PIN_MAP_bg,getFunctionName
 
+from typing import Generator
+from inspect import isgeneratorfunction, signature, isfunction,ismethod
 import logging
 logging.basicConfig(level=logging.INFO,style="{",format="{asctime}[{levelname:8}]{message}")
 logger = logging.getLogger(name="remoteio")
+logger.setLevel(logging.INFO)
 
+def timeOut(obj_type, command):
+    logger.info(f"({obj_type},{command}) timed out")
 
 
 class RemoteServer:  
-
     def __init__(self, server_ip, server_port=PORT):                                 
         self.server_ip = server_ip
         self.server_port = server_port
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_socket.connect((self.server_ip, self.server_port))
-        self._pin_list=[]
-
-    def map_g_to_b(self,pin_number,numbering):
-        if numbering=='g':
-            if pin_number in PIN_MAP_gb.keys():
-                return PIN_MAP_gb[pin_number], 'b'
-            else:
-                raise ValueError('((g), ' + str(pin_number) + ') false')    
-        if numbering == 'b':
-            if pin_number in PIN_MAP_gb.values():
-                return pin_number,numbering
-            else:
-                raise ValueError('((b), ' + str(pin_number) + ') false')
-            
-    def pin(self, pin_number, numbering='b'):
-        pin_number_new,numbering_new = self.map_g_to_b(pin_number,numbering)
-        for p in self._pin_list:
-            if p.pin_number==pin_number_new and p.numbering==numbering_new:
-                raise ValueError('(('+ str(numbering) + '), ' + str(pin_number) + ') already created as ' + 
-                                 '((' + str(numbering_new) + '), ' + str(pin_number_new)+')')
-            
-        p = RemotePin(self.client_socket, pin_number_new, numbering_new)
-        self._pin_list.append(p)
-        return p
+        self._ident_list=[]
+        ### synchronizing of access to tcp/Ip-connection by different threads
+        self.conn_lock=Lock()
 
     def close(self): 
         sleep(1.0)   
         self.client_socket.close()
 
-class RemotePin:
     
-    def __init__(self, client_socket, pin_number, numbering):
-        self.client_socket = client_socket
-        self.pin_number = pin_number
-        self.numbering = numbering
-        self.state='off'
-        self.time_ms = 0
-        self.arg1=0.0
-        self.arg2=0.0
-        self.create()
+
+    def identExists(self,ident):
+        ret=False
+        for id in self._ident_list:
+            if id==ident:
+                ret=True
+        return ret
     
-    def execute(self):
-        # data transfer
-        data=''
-        data += f"{self.numbering} {self.pin_number} {self.state} {self.time_ms} {self.arg1} {self.arg2} "
-        self.client_socket.sendall(data.encode())
-        ret=self.client_socket.recv(1024).decode()
-        if not ret:
-            raise RuntimeError('Server has terminated connection')
-        if ret[0:1] =='?':
-            if ret != f"? command ignored: {self.state}":
-             raise RuntimeError(ret)
+############################################################
+############################################################
+############################################################
+class RemotePinDevice:
+    def __init__(self, remote_server, ident, obj_type, **kwargs):
+        self.remote_server=remote_server
+        self.client_socket=remote_server.client_socket
+        self.command='off'
+        self.ident=ident
+        self.kwargs=kwargs
+        self.obj_type=obj_type
+        self._value=None
+        self._closed=False
+        self._source=None
+        self._sourceThread=None
+        self._sourceEvent=Event()
+        self._source_delay=0.005
 
 
-     
-    def create(self):
-        self.state='create'
-        self.time_ms=0
-        self.arg1=0.
-        self.arg2=0.
-        self.execute()
+#############################################################    
+#############################################################    
+##  general functions
+#############################################################
+############################################################
 
-    def on(self, time_ms:int=0,arg1:float=0.0,arg2:float=0.0):
-            self.state='on'
-            self.time_ms=time_ms
-            self.arg1=arg1
-            self.arg2=arg2
-            self.execute()
-        
-    def blink(self,time_ms:int=0,arg1:float=1.0,arg2:float=1.0):
-        self.state='blink'
-        self.time_ms=time_ms
-        self.arg1=arg1
-        self.arg2=arg2
-        self.execute()
-       
-    def pulse(self, time_ms:int=0, arg1:float=0.0,arg2:float=0.0):
-        self.state='pulse'
-        self.time_ms=time_ms
-        self.arg1=arg1
-        self.arg2=arg2
-        self.execute() 
-    
-    def value(self, time_ms:int=0, arg1:float=1.0):
-        self.state='value'
-        self.time_ms=time_ms
-        self.arg1=arg1
-        self.arg2=0.0
-        self.execute() 
 
-    def off(self,time_ms:int=0):
-        self.state='off'
-        self.time_ms=time_ms
-        self.arg1=0.0
-        self.arg2=0.0
-        self.execute()
+    def _create(self):
+        self.func_exec('_create',**self.kwargs)
+        self._value=self.getProperty('value') 
+
+    def get(self,**my_kwargs):
+        for x in my_kwargs.keys():
+            if x!='property':
+                raise ValueError('only allowed key: property')
+        ret=self.func_exec('get',**my_kwargs)
+        return ret
+
+    def set(self,**my_kwargs):
+        '''
+        my_kwargs:
+        value=...
+        '''
+        self.func_exec('set',**my_kwargs)
 
     def close(self):
-        self.state='close'
-        self.time_ms=0
-        self.arg1=0.0
-        self.arg2=0.0
-        self.execute()
+        self.command='close'
+        if self._closed==True:
+            raise ValueError("Device is closed!")
+        my_kwargs={}
+        self.func_exec('close',**my_kwargs)
+        ## delete from _pin_list
+        self.remote_server._ident_list.remove(self.ident)
+        self._closed=True
 
-    
+    def open(self):
+        self.command='open'
+        ## is open ##
+        if self._closed==False:
+            raise ValueError("Device is open!")
+        my_kwargs={}
+        self.func_exec('_create',**my_kwargs)
+        self.remote_server._ident_list.append(self.ident)
+        self._closed=False
 
+    def getProperty(self,my_property):
+        try:
+            return self.get(property=(my_property,))[my_property]
+        except:
+            return None
+        
+    def execute(self):
+        # data transfer
+        data=f"{self.ident} {self.obj_type} "
+        data +=  f"{self.command} "
+        
+        match self.command:
+            case 'get': # only verification
+                if self.kwargs=={}: 
+                    logger.info(f"{self.obj_type} {self.command} refused: no parameter ")
+                    return None
+                if len(self.kwargs) != 1: 
+                    logger.info(f"{self.obj_type} {self.command} refused: exact one parameter allowed")
+                    return None
+                if 'property' not in self.kwargs.keys():
+                    logger.info(f"{self.obj_type} {self.command} refused: expected property=(...)")
+                    return None
+                ## property=... expects a property as string or a list of properties as strings
+                for value in self.kwargs.values():
+                    if type(value)==str:
+                        value=(value,)
+                    if type(value)!=tuple:
+                        logger.info(f"{self.obj_type} {self.command} refused: property must be tuple")
+                        return None
+                    data+=f"{'property'}={value};"
+                data=data[0:-1]
+                data+='\n'
+            case 'set': 
+                    if self.kwargs=={}: 
+                        logger.info(f"{self.obj_type} {self.command} refused:no parameter")
+                        return None
+                    for key, value in self.kwargs.items():
+                        data+=f"{key}={value};"
+                    if self.kwargs!={}:
+                        data=data[0:-1]
+                        data+='\n'
+                                
+            case _: 
+                for key, value in self.kwargs.items():
+                    data+=f"{key}={value};"
+                if self.kwargs!={}:
+                    data=data[0:-1]
+                data+='\n'
 
- 
+        with self.remote_server.conn_lock:
+            self.client_socket.sendall(data.encode())
+            self.client_socket.settimeout(3.0)
+            ret=self.client_socket.recv(1024).decode()
+            self.client_socket.settimeout(None)           
+            if not ret:
+                raise RuntimeError('Server has terminated connection')
 
-
-# Example usage:
-
-
-if __name__ == "__main__":
-    from time import sleep
-    time = 2000
-    server_ip = "raspy5"
-    server_port = 8509
-  
-    
-    # Create instance of remote Raspberry Pi
-    #remote_server = RemoteServer(server_ip, server_port)
-    
-    #remote_pin = remote_server.pin(21, 'g')
-    #remote_pin1 = remote_server.pin(38, 'b')
-
-    z=0
-    while z<10:   
-        # Create instance of remote Raspberry Pi
-        remote_server = RemoteServer(server_ip, server_port)
-        remote_pin1 = remote_server.pin(38, 'b')
-        remote_pin = remote_server.pin(21, 'g')
-        #remote_pin1 = remote_server.pin(38, 'b') 
-        # Demo features
-        remote_pin.on(time_ms=4000) 
-        remote_pin1.on(time_ms=4000) 
-        sleep(4)
-        #remote_pin.close()
-        #remote_pin1.close()
-        #sleep(4)
-        remote_pin.off(time_ms=4000) 
-        remote_pin1.off(time_ms=4000) 
-        sleep(4)        
-
-        remote_pin.blink(time_ms=4000)
-        remote_pin1.blink(time_ms=4000)
-        sleep(4)
-        remote_pin.off (time_ms=4000)
-        remote_pin1.off (time_ms=4000)
-        sleep(4)
-
-        remote_pin.pulse (time_ms=4000)
-        remote_pin1.pulse (time_ms=4000)
-        sleep(4)
-        remote_pin.off (time_ms=4000)
-        remote_pin1.off (time_ms=4000)
-        sleep(4)
-        remote_pin.blink(time_ms=4000,arg1=0.1,arg2=0.2)
-        remote_pin1.blink(time_ms=4000,arg1=0.1,arg2=0.2)
-        sleep(4)
-        remote_pin.off (time_ms=4000)
-        remote_pin1.off (time_ms=4000)
-        sleep(4)
-        remote_pin.value(time_ms=4000,arg1=0.1)
-        remote_pin1.value(time_ms=4000,arg1=0.1)
-        sleep(4)
-        remote_pin.off (time_ms=4000)
-        remote_pin1.off (time_ms=4000)
-        sleep(4)
-        remote_server.close()  
-        z=z+1
-    while True:
-       pass
+            match ret[0:2]:
+                case "??": 
+                    logger.info(ret)
+                    raise RuntimeError(ret)
+                case "!G":
+                    ### message to get-command from server ###   
+                    return eval(ret[2:])
+                case _:
+                    return None
             
+    def func_exec(self,name,**func_kwargs):
+        self.command=name
+        self.kwargs.clear()
 
+        for key,value in func_kwargs.items():
+            self.kwargs[key]=value
+        ret=self.execute()
+        return ret
+
+####################################################################
+## property source
+####################################################################
+    @property
+    def source(self):
+       ## time needed for aborting source_function-thread
+        #sleep(0.002)
+        return self._source
+    @source.setter
+    def source(self, quelle):
+        self.command='source'
+        if self._sourceThread !=None:
+            #soft kill of thread
+            self._sourceEvent.set()
+            while self._sourceEvent.is_set():
+                pass
+            self._source=None
+            self._sourceThread = None
+        if quelle==None:   
+            return
+        if not issubclass(type(quelle),RemotePinDevice):
+            if not issubclass(type(quelle),Device) and \
+                not isinstance(quelle,Generator) and \
+                not isgeneratorfunction(quelle):
+               raise ValueError(f"Source {quelle} not supported")
+            else:
+                self._sourceThread=Thread(target=self.source_function, args=(quelle,self._sourceEvent),)
+                self._sourceThread.start() 
+                self._source=quelle
+        else:
+            self._sourceThread=Thread(target=self.source_function, args=(quelle.values,self._sourceEvent))
+            self._sourceThread.start() 
+            self._source=quelle
+
+             
+    def source_function(self,quelle,ev):
+        ## infinite generator expected
+        try:
+            old_value=None    
+            if issubclass(type(quelle),Device):
+                xxx=quelle.values
+            else:
+                if isinstance(quelle,Generator):
+                    xxx=quelle
+                else:
+                    if isgeneratorfunction(quelle):
+                        xxx=quelle()
+                    else:
+                        raise ValueError(f"Source {quelle} not supported")
+            
+            for wert in xxx:
+                if wert!=old_value:
+                    self.value=wert
+                    old_value=wert
+                if ev.is_set():
+                    break
+                    
+        except Exception as e:
+            logger.info(str(e))
+        finally:
+            ev.clear()
+###########################################################
+    @property
+    def value(self): 
+        self._value=self.getProperty('value') 
+        return self._value 
+    @value.setter
+    def value(self, wert):     
+        self.func_exec('set',value=wert)
+        self._value=wert
+#############################################################
+    @property
+    def values(self):
+        """
+        An infinite iterator of values read from :attr:`value`.
+        """
+        while True:
+            try:
+                sleep(self._source_delay)           
+                yield self.value
+            except Exception:
+                break
+##########################################################################
+##########################################################################
+
+class RemoteDigitalDevice(RemotePinDevice):
+    def __init__(self, remote_server, ident, obj_type, *args,**kwargs):          
+        RemotePinDevice.__init__(self,remote_server, ident, obj_type, *args, **kwargs)
+        remote_server._ident_list.append(ident)
+
+        ## for some necessary locking
+        self._Lock = Lock()
+        self._create()
+ 
+#############################################################
+### parametrizable methods for when_... properties
+#############################################################
+    def _when_task(self,when_text,wert,thread_dict):
+        if wert==None:
+           thread_dict[when_text][0]=None
+           return 
+        if not (isfunction(wert) or ismethod(wert)):
+           raise TypeError(f"{wert.__name__} is not a function and not a method")        
+        sig = signature(wert)   
+        count_positional=0
+        for name, param in sig.parameters.items():
+            if str(param.kind)=='POSITIONAL_OR_KEYWORD':
+                count_positional=+1
+        if count_positional>1:
+            raise TypeError('more than 1 positional(mandatory) parameters')
+        
+        if not thread_dict[when_text][1] is None:
+            thread_dict[when_text][0]=None
+            while thread_dict[when_text][1]!= None and thread_dict[when_text][1].is_alive():
+                pass
+        thread_dict[when_text][0]=wert
+        thread_dict[when_text][1]=Thread(target=thread_dict[when_text][2], args=(when_text,wert,thread_dict),)
+        try:
+            thread_dict[when_text][1].start() 
+        except:
+            thread_dict[when_text][0]=None
+            logger.info(f"{when_text} = {str(wert)} has failed")
+
+    def _when_thread_function(self,when_text,func,thread_dict):
+        try:
+            old_value=None
+            for value in thread_dict[when_text][3](when_text,thread_dict):
+                #starting condition
+                if old_value==None:
+                    old_value=value
+                    continue
+                else:
+                    #change situation
+                    if old_value!=value:
+                        if value == True:
+                                if not func is None:  
+                                    wp=0
+                                    sig = signature(func)
+                                    for name, param in sig.parameters.items():
+                                        if str(param.kind)=='POSITIONAL_OR_KEYWORD':
+                                            wp=+1
+                                            break
+                                    if wp==0:
+                                        func()
+                                    else:
+                                        func(self)
+                                else:
+                                    break
+                        else:
+                            pass
+                        old_value=value
+        except Exception as e:
+            logger.error(f"{str(e)}")
+        finally:
+            thread_dict[when_text][0]=None
+            thread_dict[when_text][1]=None     
+            
+##################################################################
+## special treatment for when_held
+##################################################################
+    def _when_wh_function(self,when_text,func,thread_dict):
+        try:
+            for value in thread_dict[when_text][3](when_text,thread_dict):
+                if value==True:
+                    if not func is None:
+                        wh=0
+                        sig = signature(func)
+                        for name, param in sig.parameters.items():
+                            if str(param.kind)=='POSITIONAL_OR_KEYWORD':
+                                wh=+1
+                                break
+                        if self.hold_repeat:
+                            while not thread_dict[when_text][0] is None:
+                                if wh==0:
+                                    func()
+                                else:
+                                    func(self)
+                                sleep(self.hold_time)
+                            else:
+                                break
+                        else:
+                            if wh==0:
+                                func()
+                            else:
+                                func(self)
+                            self.wait_for_release()
+                        if thread_dict[when_text][0] == None:
+                            break
+                    else:
+                        thread_dict[when_text][0] = None
+                        break
+                   
+        except Exception as e:
+            logger.error(f"{str(e)}")
+        finally:
+            thread_dict[when_text][0] = None
+            thread_dict[when_text][1] = None
+#########################################################################
+## for parametrizing of wait_for... funtions
+#########################################################################
+    def _wait_task(self,wait_text,gen_function,**my_kwargs):
+        if 'timeout' in my_kwargs.keys():
+            if not my_kwargs['timeout'] is None:
+                t=Timer(my_kwargs['timeout'],timeOut,(self.obj_type,wait_text))
+                t.start()
+                while t.is_alive(): 
+                    for value in gen_function(wait_text):
+                        if value==True:
+                            t.cancel()
+                            return 0
+                        break
+                else:
+                    return 1   
+        for value in gen_function(wait_text):
+            if value==True:
+                return 0
+
+    

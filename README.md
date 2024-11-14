@@ -3,37 +3,27 @@ A Raspberry Pi GPIO remote control based on gpiozero
 
 https://github.com/gpiozero/gpiozero
 
-# new behavior of remoteio: simultaneous processing of remote pins
-The idea is to use some remote server for manipulating e.g. an idustrial process in the case where you need more pins than the client raspberry pi can offer.
-The behavior of led.on(),led.off(),led.pulse() on the remote rpi is the same as when the client would perform them itself.
-For industrial processes there is beside constant signal the necessity of impulses. Therefore led.on(time_ms) is possible. Naturally led.pulse(time_ms) and led.blink(time_ms) are also
-allowed, perhaps of advantage for some visualization. The use of threads for realisation shows problems for blinking and pulsing. Because threads have no effective time sharing, multiprocessing is used
-in order to guarantee the right bevavior of pulsing and blinking. For one pin, if several tasks are send to the server, all these tasks are executed one after the other as given by the client. A task pin.close() is allowed. Tasks for different pins are treated independently, simultaneously. The remoteio project forces the use of a set of pins. These pins are closed together, when the communication to the server is closed by the client. But this closing is a soft closing, that guarantees that all tasks transferred from the client are perfomed before closing the leds. The function run_server of remoteio_server has two modi. One mode ('wait') garantees that each manipulating of a remote pin is executed, the other mode ('nowait') interrupts a preceeding manipulate-task when a new manipulating of the same pin reaches the server before the preceeding task is finished.  
+# remoteio comparable to remote gpiozero
+This version brings deep changes in order to harmonize with gpiozero. A remote device is created with the three positioning
+parameters remote_server, ident,o bj_type in order to manage the passthrough to gpiozero on the server side. These 3 postional parameter
+are followed by *args,**kwargs which are given to gpiozero as they are. So you can use the gpiozero parameter as given in the gpiozero API.
+Further time_ms is replaced by on_time(sec). Timing is delegated to gpiozero, e.g. on(on_time=5.0) is realized as blinking(on_time=5.0,off_time=0,n=1).
+Remoteio does not support timing itself. This is important for realizing properties like x.value=... or y=x.value without risking timeouts of getter and setter functions.
+on(on_time=5.0) is interrutable e.g. by blink(). Therefore when it is wished that on_time is fully executed and you want to append e.g. a blink() to that pin, then remember
+that blink() starts immediately,when called. Therefore you better wait 5 seconds by a sleep or a timer. The on_time parameter for on(...) makes sense when you want to give a signal
+to different pins, where you don't want to wait until preceeding pins have switched off or when you want to guarantee a good timing for an impulse.
+The properties of the following devices as well as their functions and when_... and wait_for clauses are just realized:
+Remote_LED,Remote_PWMLED,Remote_RGBLED,Remote_Buzzer,Remote_TonalBuzzer, Remote_Motor,Remote_PhaseEnableMotor,Remote_Servo,Remote_AngularServo,Remote_Button,
+Remote_MCP3208, Remote_LineSensor, Remote_MotionSensor,Remote_LightSensor, Remote_DistanceSensor,Remote_RotaryEncoder,Remote_LedBoard,Remote_LedBarGraph.
+For Remote_LEDBoard and Remote_LEDBarGraph the Compositum pattern (tree and leaves) is not realized.
+Remote_RotaryEncoder is endowed with an interesting mathematical feature (shortest way) for counting of the steps of the Remote_RotaryEncoder.
+From a technical point of view the usage of properties is dominant. Remoteio offers functions in order to destinate whether an attribute of a remote device is a function or
+an only readable or a writeable property. There are other interesting helper-functions too. Remoteio_server treats all devices in the same way without special knowledge of
+the devices. Remoteio_client acts as an abstract kernel too, the details are in remote_devices. All devices are treated by the same proceeding. 
+Pins are expected to be written as GPIO-pin numbers. Remoteio offers the function map_bg that translates board numbering in Gpio numbering. The examples in controller.py are 
+strongly recommended.
 
-The main technical ideas in remoteio_server.py are the use of 
-  1. queing of received data to avoid time loss in receiving data
-  2. an own process for each pin for treating pins simultaneously
-  3. multiprocessing safe queues for each pin as input to the pin-specific processes
-  4. the getattr function to find led-funtions only by knowing the name of the function
-  5. synchronization technics necessary because of multiprocessing
-  6. special treating of the reveive-buffer, necessary when more data then the length of the receive-buffer(size)=1024 come in.
-  7. communication of success to the client: remoteio_server.handle_client(...) <----> remoteio_client.remote_pin.execute()
-  8. use of the queue from handle_client ---> handle_led in the other direction in order to synchronize led creation and process generation.
 
-Main ideas in remoteio_server
-  1. def run_server(port=PORT,mode='wait') with a further parameter mode, that defaults to 'wait'.
-     In the mode 'wait' each pin-manipulation that reaches the server is executed, even if the connection is interrupted.
-     In the mode 'nowait' a pin-manipulation interrupts the preceeding one, even if time_ms is not finished.
-     
-Main ideas in remote_client.py 
-1. internal pin numbering is board numbering. Gpio-numbering is internally translated in board numbering. This simplifies the verification whether someone wants to define a remotr pin two times.
-2. led.cose() is allowed, all tasks for a closed pin are ignored. This is communicated to the client.
-3. led.blink(tims_ms,arg1,arg2) is allowed, for defining different on and off times.
-4. led.value(time_ms,arg1) is allowed for a constant light which is not the maximum possible light of a led.
-5. led.off(time_ms) is allowed.
-6. An internal create function for remote-pin generation, allowing to verify whether the pin is busy on the server.
-   
-By the above changes you can fully use the watch of the remote server. But be aware,if you send only tasks with time_ms>0 to the server. These tasks are immediately memorized on the server. If you make therein several client.close commandos and connection generations, it can happen that a Led is busy on the server side and an error is thrown on the client side. client.close() should only be done when the connection is no more needed. Remoteio treats tests with multiple opens  and closes without problem. But the create of a pin is rejected when the pin is busy. 
 
 ## Server (remote Raspberry Pi)
 Use this all-in-one command to install remoteio as deamon on port `8509`.
@@ -67,27 +57,35 @@ if __name__ == "__main__":
 
 ## Client usage
 ```
-from remoteio import RemoteServer
+from remoteio import RemoteServer, Remote_LED, map_bg
 
 if __name__ == "__main__":
     server_ip = "192.168.1.38"
     server_port = 1234
 
     remote_server = RemoteServer(server_ip, server_port)
-    remote_pin = remote_server.pin(7, 'b')
-    remote_pin.on(time_ms=2000) # (Optional) Time until switch off
+    remote_pin = Remote_LED(remote_server,ident,map_bg(7, 'b'))    # ident is a freely chooseable string.
+
+    #you can say Remote_LED, remote_PWMLED, Remote_xxx,
+    #where xxx is the name of a supported gpiozero device
+
+    remote_pin.on(on_time=2) # (Optional) Time in seconds until switch off
     remote_pin.blink() # Blink LED
     remote_pin.pulse() # Pulse LED
     remote_pin.off()
     remote_server.close()
+
+    for more concrete examples study controller.py
 ```
 
 ### Use Board numbering
 ```
-remote_pin = remote_server.pin(7, 'b') # Use physical board numbering
+remote_pin = remote_LED(remote_server,ident,map_bg(7, 'b')) # Use physical board numbering
 ```
-### Use GPIO numbering
+### Use GPIO numbering (default)
 ```
-remote_pin = remote_server.pin(4, 'g') # Use GPIO numbering (e.g. GPIO4)
+remote_pin = remote_LED(remote_server,ident,4) # Use GPIO numbering (e.g. GPIO4)
 ```
+
+
 
