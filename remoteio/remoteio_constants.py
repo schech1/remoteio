@@ -29,4 +29,3 @@ PIN_MAP_bg={
     13:27
 }
 evalAllowed=(type(None),int,str,float,bool,str)
-

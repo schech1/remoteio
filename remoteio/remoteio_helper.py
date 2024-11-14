@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-from inspect import getmembers,stack
+from inspect import getmembers,stack,currentframe
 from types import FunctionType
+from remoteio import PIN_MAP_bg
+from gpiozero import LED
 
 def getFunctionName()->str:
     """
@@ -82,3 +84,36 @@ def shortestWay(a,b,max):
           return +(abs(max-a) + 1 + abs((-max)-b))
     
     if a==b: return 0
+
+
+def map_bg(pin_number,numbering):
+    if numbering=='b':
+        if pin_number in PIN_MAP_bg.keys():
+            return PIN_MAP_bg[pin_number]
+        else:
+            raise ValueError('((b), ' + str(pin_number) + ') false')    
+    if numbering == 'g':
+        if pin_number in PIN_MAP_bg.values():
+            return pin_number
+        else:
+            raise ValueError('((g), ' + str(pin_number) + ') false')
+        
+def getBusyGpioPins():
+  liste=[]
+  for pin in range(0,28):
+    try:
+        l=LED(pin)
+        l.close()
+    except Exception as e:
+        liste.append(f"Pin{pin}: {e.__class__} {str(e)}")
+    
+  return liste
+
+
+def getName(var):
+    callers_local_vars = currentframe().f_back.f_locals.items()
+    list_entry= [var_name for var_name, var_val in callers_local_vars if var_val is var][0]
+    return list_entry
+
+
+

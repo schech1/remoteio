@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 from multiprocessing import Lock
-from remoteio import RemoteDigitalDevice,getFunctionName,shortestWay
+from remoteio import RemoteDigitalDevice
+from remoteio import RemoteServer
+from remoteio import getFunctionName,shortestWay,map_bg,getName
+from remoteio import getFunctions,getReadOnlyProperties,getWriteableProperties
 from gpiozero import *
 from signal import pause
 from time import sleep
@@ -19,8 +22,13 @@ class Remote_LED(RemoteDigitalDevice):
     pin_factory: Any | None = None
 )'''
 
-    def __init__(self, remote_server,*args,**kwargs):
-        super().__init__(remote_server, 'LED', *args,**kwargs)
+    def __init__(self, remote_server,ident,*args,**kwargs):
+        if args!=():
+            if len(args)==1:
+                kwargs['args']=args
+            else:
+                raise ValueError(f"LED has 1 positional parameter")
+        super().__init__(remote_server, ident, 'LED',**kwargs)
 
         self.functions=    ['blink', 'close', 'ensure_pin_factory', 'off', 'on', 'toggle']         
         self.readOnlyProperties = ['closed', 'is_active', 'is_lit', 'pin', 'values']
@@ -34,7 +42,10 @@ class Remote_LED(RemoteDigitalDevice):
     def off(self,**kwargs):
         self.func_exec(getFunctionName(),**kwargs)
     def on(self,**kwargs):
-        self.func_exec(getFunctionName(),**kwargs) 
+        if 'on_time' in kwargs.keys():
+            self.blink(on_time=kwargs['on_time'],off_time=0,n=1)
+        else:
+            self.func_exec(getFunctionName(),**kwargs) 
     def toggle(self,**kwargs):
         self.func_exec(getFunctionName(),**kwargs)
     ## open, close are treated in super_class   
@@ -92,15 +103,21 @@ class Remote_LED(RemoteDigitalDevice):
     #print(getReadOnlyProperties(l))
     #print(getWriteableProperties(l))
 
-#    server_ip = "raspy5"
+#    server_ip = "192.168.178.136"
 #    server_port = 8509
-    
+#    
 #    # Create instance of remote Raspberry Pi
 #    rs = RemoteServer(server_ip, server_port)
-#    rl=Remote_LED(rs,21)
-#    rl1=Remote_LED(rs,20)
+#    rl=None
+#    rl=Remote_LED(rs,'rl',pin=21)
+#    rl.on(on_time=5.0)
+#    sleep(5.0)       # simulate timing for server on client, when you work furtheron with the led                
+#    rl1=Remote_LED(rs,'rl1',20)
+#    
+#    rl2=Remote_LED(rs,'rl2',16) 
 #    print(rl.is_active)
 #    rl1.source=rl
+#    rl2.source=rl1
 #    rl.blink()
 #    sleep(5)
 #    print(rl.active_high)
@@ -125,8 +142,13 @@ class Remote_PWMLED(RemoteDigitalDevice):
     )
     '''
 
-    def __init__(self, remote_server,*args,**kwargs):
-        super().__init__(remote_server, 'PWMLED', *args,**kwargs)
+    def __init__(self, remote_server,ident,*args,**kwargs):
+        if args!=():
+            if len(args)==1:
+                kwargs['args']=args
+            else:
+                raise ValueError(f"PWMLED has 1 positional parameter")
+        super().__init__(remote_server, ident, 'PWMLED', **kwargs)
         
 
         self.functions=  ['blink', 'close', 'ensure_pin_factory', 'off', 'on', 'pulse', 'toggle']
@@ -141,7 +163,10 @@ class Remote_PWMLED(RemoteDigitalDevice):
     def off(self,**kwargs):
         self.func_exec(getFunctionName(),**kwargs)
     def on(self,**kwargs):
-        self.func_exec(getFunctionName(),**kwargs)
+        if 'on_time' in kwargs.keys():
+            self.blink(on_time=kwargs['on_time'],off_time=0,n=1)
+        else:
+            self.func_exec(getFunctionName(),**kwargs) 
     def pulse(self,**kwargs):
         self.func_exec(getFunctionName(),**kwargs) 
     def toggle(self,**kwargs):
@@ -195,7 +220,7 @@ class Remote_PWMLED(RemoteDigitalDevice):
     ## source, value are treated in superclass                               
                                   
 #if __name__=='__main__':
-#    server_ip = "raspy5"
+#    server_ip = "192.168.178.136"
 #    server_port = 8509
     
     #l=PWMLED(16)
@@ -203,21 +228,22 @@ class Remote_PWMLED(RemoteDigitalDevice):
     #print(getReadOnlyProperties(l))
     #print(getWriteableProperties(l))
        #   
-    # Create instance of remote Raspberry Pi
-    #rs = RemoteServer(server_ip, server_port)
-    #rl=Remote_PWMLED(rs,21)
-    #rl1=Remote_PWMLED(rs,20)
-    #rl1.source=rl
-    #rl.blink()
-    #sleep(5)
-    #rl.pulse(time_ms=5000)
-    #sleep(6)
-    #rl.on()
-    #sleep(5)
-    #rl.off()
-    #sleep(5)
-    #rl.toggle()
-    #pause()
+#    # Create instance of remote Raspberry Pi
+#    rs = RemoteServer(server_ip, server_port)
+#    rl=Remote_PWMLED(rs,'p21',21)
+#    rl1=Remote_PWMLED(rs,'p20',pin=20)
+#    rl._source_delay=0.01
+#    rl1.source=rl
+#    #rl.blink()
+#    #sleep(5)
+#    rl.pulse(fade_in_time=2.5,fade_out_time=2.5,n=1)   # pulse one time in 5 seconds
+#    sleep(5)                                           # wait until pulsing has finished
+#    rl.on()
+#    sleep(5)
+#    rl.off()
+#    sleep(5)
+#    rl.toggle()
+#    pause()
 ##################################################################
 ##################################################################
 class Remote_RGBLED(RemoteDigitalDevice):
@@ -235,8 +261,15 @@ class Remote_RGBLED(RemoteDigitalDevice):
     )
     '''
 
-    def __init__(self, remote_server,*args,**kwargs):
-        super().__init__(remote_server, 'RGBLED', *args,**kwargs)
+    def __init__(self, remote_server,ident,*args,**kwargs):
+        if args!=():
+            if len(args)==3:
+                kwargs['args']=args
+            else:
+                raise ValueError(f"RGBLED has 3 positional parameter")
+
+           
+        super().__init__(remote_server,ident, 'RGBLED', **kwargs)
         
 
         self.functions=  ['blink', 'close', 'ensure_pin_factory', 'off', 'on', 'pulse', 'toggle']
@@ -251,7 +284,10 @@ class Remote_RGBLED(RemoteDigitalDevice):
     def off(self,**kwargs):
         self.func_exec(getFunctionName(),**kwargs)
     def on(self,**kwargs):
-        self.func_exec(getFunctionName(),**kwargs)
+        if 'on_time' in kwargs.keys():
+            self.blink(on_time=kwargs['on_time'],off_time=0,n=1)
+        else:
+            self.func_exec(getFunctionName(),**kwargs) 
     def pulse(self,**kwargs):
         self.func_exec(getFunctionName(),**kwargs) 
     def toggle(self,**kwargs):
@@ -320,30 +356,31 @@ class Remote_RGBLED(RemoteDigitalDevice):
     ## source, value are treated in superclass                               
                                   
 #if __name__=='__main__':
-#    server_ip = "raspy5"
+#    server_ip = "192.168.178.136"
 #    server_port = 8509
     
     #l=RGBLED(16,20,21)
     #print(getFunctions(l))
     #print(getReadOnlyProperties(l))
     #print(getWriteableProperties(l))
-    #   
-    # Create instance of remote Raspberry Pi
-    #rs = RemoteServer(server_ip, server_port)
-    #rl=Remote_RGBLED(rs,16,20,21)
-    
-    #rl.blink()
-    #sleep(5)
-    #rl.pulse()
-    #sleep(6)
-    #rl.on()
-    #sleep(5)
-    #rl.off()
-    #sleep(5)
-    #rl.toggle()
-    #sleep(0.5)
-    #rl.value=(1.0,0.5,0.1)
-    #pause()
+       
+    #Create instance of remote Raspberry Pi
+#    rs = RemoteServer(server_ip, server_port)
+#    #rl=Remote_RGBLED(rs,'rgb',green=20,blue=16,red=21,pwm=True)  
+#    rl=Remote_RGBLED(rs,'rgb',21,20,16,pwm=True)    #red,green,blue
+#    rl.blink()
+#    sleep(5)
+#    rl.pulse()
+#    sleep(5)
+#    rl.on(on_time=5.0)
+#    #pause()
+#    sleep(5)
+#    rl.off()
+#    sleep(5)
+#    rl.toggle()
+#    sleep(0.5)
+#    rl.value=(1.0,0,0)  # red, green,blue
+#    pause()
 ##################################################################
 ##################################################################
 class Remote_Buzzer(RemoteDigitalDevice):
@@ -358,8 +395,14 @@ class Remote_Buzzer(RemoteDigitalDevice):
     )
     '''
 
-    def __init__(self, remote_server,*args,**kwargs):
-        super().__init__(remote_server, 'Buzzer', *args,**kwargs)
+    def __init__(self, remote_server,ident,*args,**kwargs):
+        if args!=():
+            if len(args)==1:
+                kwargs['args']=args
+            else:
+                raise ValueError(f"Buzzer has 1 positional parameter")
+
+        super().__init__(remote_server,ident, 'Buzzer', **kwargs)
         
 
         self.functions=  ['beep', 'blink', 'close', 'ensure_pin_factory', 'off', 'on', 'toggle']
@@ -376,7 +419,10 @@ class Remote_Buzzer(RemoteDigitalDevice):
     def off(self,**kwargs):
         self.func_exec(getFunctionName(),**kwargs)
     def on(self,**kwargs):
-        self.func_exec(getFunctionName(),**kwargs)
+        if 'on_time' in kwargs.keys():
+            self.beep(on_time=kwargs['on_time'],off_time=0,n=1)
+        else:
+            self.func_exec(getFunctionName(),**kwargs)
     def toggle(self,**kwargs):
         self.func_exec(getFunctionName(),**kwargs)
     ## open, close are treated in super_class   
@@ -425,7 +471,7 @@ class Remote_Buzzer(RemoteDigitalDevice):
     ## source, value are treated in superclass                               
                                   
 #if __name__=='__main__':
-#    server_ip = "raspy5"
+#    server_ip = "192.168.178.136"
 #    server_port = 8509
     
     #l=Buzzer(16)
@@ -434,20 +480,20 @@ class Remote_Buzzer(RemoteDigitalDevice):
     #print(getWriteableProperties(l))
     #   
     # Create instance of remote Raspberry Pi
-    #rs = RemoteServer(server_ip, server_port)
-    #rl=Remote_Buzzer(rs,40,'b')
-    # 
-    #rl.beep()
-    #sleep(15)
-    #rl.blink()
-    #sleep(5)
-    #rl.on()
-    #sleep(5)
-    #rl.off()
-    #sleep(5)
-    #rl.toggle()
-    #pause()
-##################################################################
+#    rs = RemoteServer(server_ip, server_port)
+#    rl=Remote_Buzzer(rs,'buz',map_bg(40,'b'))
+#     
+#    rl.beep()
+#    sleep(8)
+#    rl.blink()
+#    sleep(5)
+#    rl.on(on_time=5)
+#    sleep(5)
+#    rl.off()
+#    sleep(5)
+#    rl.toggle()
+#    pause()
+#################################################################
 ##################################################################
 class Remote_TonalBuzzer(RemoteDigitalDevice):
     '''
@@ -461,8 +507,13 @@ class Remote_TonalBuzzer(RemoteDigitalDevice):
 )
     '''
 
-    def __init__(self, remote_server,*args,**kwargs):
-        super().__init__(remote_server, 'TonalBuzzer', *args,**kwargs)
+    def __init__(self, remote_server,ident,*args,**kwargs):
+        if args!=():
+            if len(args)==1:
+                kwargs['args']=args
+            else:
+                raise ValueError(f"TonalBuzzer has 1 positional parameter")
+        super().__init__(remote_server, ident, 'TonalBuzzer', **kwargs)
         
 
         self.functions=  ['close', 'ensure_pin_factory', 'play', 'stop']
@@ -536,30 +587,32 @@ class Remote_TonalBuzzer(RemoteDigitalDevice):
     ## source, value are treated in superclass                               
                                   
 #if __name__=='__main__':
-#    server_ip = "raspy5"
+#    server_ip = "192.168.178.136"
 #    server_port = 8509
-#    
+    
     #l=TonalBuzzer(16)
     #print(getFunctions(l))
     #print(getReadOnlyProperties(l))
     #print(getWriteableProperties(l))
 
    
-    #Create instance of remote Raspberry Pi
-    #rs = RemoteServer(server_ip, server_port)
-    #rl=Remote_TonalBuzzer(rs,40,'b')
-    #print(rl.all)
-    #rl.play(tone="Tone('A4')")
-    #sleep(4)
-    #rl.stop()
-    #sleep(10)
-    #rl.tone=220.0
-    #sleep(4)
-    #rl.stop()
-    #sleep(4)
-    #print(rl.tone)
-    #sleep(5)
-    #pause()   
+#    #Create instance of remote Raspberry Pi
+#    rs = RemoteServer(server_ip, server_port)
+#    rl=Remote_TonalBuzzer(rs,'tz',pin=map_bg(40,'b'))
+#    rl=Remote_TonalBuzzer(rs,'tz',map_bg(40,'b'))
+#    print(rl.all)
+#    rl.play(tone="Tone('A4')")
+#    sleep(4)
+#    rl.stop()
+#    sleep(10)
+#    rl.tone=220.0
+#    print(rl.tone)
+#    sleep(4)
+#    rl.stop()
+#    sleep(4)
+#    print(rl.tone)
+#    sleep(5)
+#    pause()   
 ##################################################################
 ##################################################################
 class Remote_Motor(RemoteDigitalDevice):
@@ -576,17 +629,14 @@ class Remote_Motor(RemoteDigitalDevice):
 
     '''
 
-    def __init__(self, remote_server,*args,**kwargs):
-        args1=list(args)
-        if len(args1)>=3:
-            # pin1,pin2,pin3?,...
-            if type(args1[2])==int:
-                # enable is given
-                en=args1.pop(2)
-                args=tuple(args1)
-                kwargs['enable']=en
+    def __init__(self, remote_server,ident,*args,**kwargs):
+        if args!=():
+            if len(args)==2:
+                kwargs['args']=args
+            else:
+                raise ValueError(f"Motor has 2 positional parameter")
 
-        super().__init__(remote_server, 'Motor', *args,**kwargs)
+        super().__init__(remote_server, ident, 'Motor', **kwargs)
         
 
         self.functions=  ['backward', 'close', 'ensure_pin_factory', 'forward', 'reverse', 'stop']
@@ -647,30 +697,30 @@ class Remote_Motor(RemoteDigitalDevice):
     ## source, value are treated in superclass                               
                                   
 #if __name__=='__main__':
-#    server_ip = "raspy5"
+#    server_ip = "192.168.178.136"
 #    server_port = 8509
     
-    #l=Motor(16)
+    #l=Motor(16,20)
     #print(getFunctions(l))
     #print(getReadOnlyProperties(l))
     #print(getWriteableProperties(l))
    
     #Create instance of remote Raspberry Pi
-    #rs = RemoteServer(server_ip, server_port)
-    #rl=Remote_Motor(rs,16,20)
-    #print(rl.all)
-    #rl.forward()
-    #sleep(4)
-    #rl.stop()
-    #print(rl.is_active)
-    #rl.reverse()
-    #sleep(4)
-    #rl.backward()
-    #print(rl.is_active)
-    #sleep(4)
-    #rl.stop()
-    #sleep(5)
-    #pause() 
+#    rs = RemoteServer(server_ip, server_port)
+#    rl=Remote_Motor(rs,'mot',16,20)
+#    print(rl.all)
+#    rl.forward()
+#    sleep(4)
+#    rl.stop()
+#    print(rl.is_active)
+#    rl.reverse()
+#    sleep(4)
+#    rl.backward()
+#    print(rl.is_active)
+#    sleep(4)
+#    rl.stop()
+#    sleep(5)
+#    pause() 
 ##################################################################
 ##################################################################
 class Remote_PhaseEnableMotor(RemoteDigitalDevice):
@@ -685,8 +735,13 @@ class Remote_PhaseEnableMotor(RemoteDigitalDevice):
 )
     '''
 
-    def __init__(self, remote_server,*args,**kwargs):
-        super().__init__(remote_server, 'PhaseEnableMotor', *args,**kwargs)
+    def __init__(self, remote_server,ident, *args,**kwargs):
+        if args!=():
+            if len(args)==2:
+                kwargs['args']=args
+            else:
+                raise ValueError(f"PhaseEnableMotor has 2 positional parameter")
+        super().__init__(remote_server, ident, 'PhaseEnableMotor', **kwargs)
         
 
         self.functions=  ['backward', 'close', 'ensure_pin_factory', 'forward', 'reverse', 'stop']
@@ -745,7 +800,7 @@ class Remote_PhaseEnableMotor(RemoteDigitalDevice):
     ## source, value are treated in superclass                               
                                   
 #if __name__=='__main__':
-#    server_ip = "raspy5"
+#    server_ip = "192.168.178.136"
 #    server_port = 8509
     
     #l=PhaseEnableMotor(16,20)
@@ -755,7 +810,7 @@ class Remote_PhaseEnableMotor(RemoteDigitalDevice):
    
     #Create instance of remote Raspberry Pi
 #    rs = RemoteServer(server_ip, server_port)
-#    rl=Remote_PhaseEnableMotor(rs,16,20)
+#    rl=Remote_PhaseEnableMotor(rs,'rpe',16,20)
 #    print(rl.all)
 #    rl.forward()
 #    sleep(4)
@@ -787,8 +842,13 @@ class Remote_Servo(RemoteDigitalDevice):
 )
     '''
 
-    def __init__(self, remote_server,*args,**kwargs):
-        super().__init__(remote_server, 'Servo', *args,**kwargs)
+    def __init__(self, remote_server,ident,*args,**kwargs):
+        if args!=():
+            if len(args)==1:
+                kwargs['args']=args
+            else:
+                raise ValueError(f"Servo has 1 positional parameter")
+        super().__init__(remote_server, ident, 'Servo', **kwargs)
         
 
         self.functions=  ['close', 'detach', 'ensure_pin_factory', 'max', 'mid', 'min']
@@ -862,9 +922,9 @@ class Remote_Servo(RemoteDigitalDevice):
     ## source, value are treated in superclass                               
                                   
 #if __name__=='__main__':
-#    server_ip = "raspy5"
+#    server_ip = "192.168.178.136"
 #    server_port = 8509
-    
+   
     #l=Servo(16)
     #print(getFunctions(l))
     #print(getReadOnlyProperties(l))
@@ -873,7 +933,7 @@ class Remote_Servo(RemoteDigitalDevice):
    
     #Create instance of remote Raspberry Pi
 #    rs = RemoteServer(server_ip, server_port)
-#    rl=Remote_Servo(rs,21)
+#    rl=Remote_Servo(rs,'rso',21)
 #    print(rl.all)
 #    rl.max()
 #    sleep(4)
@@ -902,8 +962,13 @@ class Remote_AngularServo(RemoteDigitalDevice):
 
     '''
 
-    def __init__(self, remote_server,*args,**kwargs):
-        super().__init__(remote_server, 'AngularServo', *args,**kwargs)
+    def __init__(self, remote_server,ident,*args,**kwargs):
+        if args!=():
+            if len(args)==1:
+                kwargs['args']=args
+            else:
+                raise ValueError(f"AngularServo has 1 positional parameter")
+        super().__init__(remote_server,ident, 'AngularServo', **kwargs)
         
 
         self.functions=  ['close', 'detach', 'ensure_pin_factory', 'max', 'mid', 'min']
@@ -990,7 +1055,7 @@ class Remote_AngularServo(RemoteDigitalDevice):
     ## source, value are treated in superclass                               
                                   
 #if __name__=='__main__':
-#    server_ip = "raspy5"
+#    server_ip = "192.168.178.136"
 #    server_port = 8509
     
     #l=AngularServo(16)
@@ -998,9 +1063,9 @@ class Remote_AngularServo(RemoteDigitalDevice):
     #print(getReadOnlyProperties(l))
     #print(getWriteableProperties(l))
    
-    #Create instance of remote Raspberry Pi
+#    #Create instance of remote Raspberry Pi
 #    rs = RemoteServer(server_ip, server_port)
-#    rl=Remote_AngularServo(rs,21)
+#    rl=Remote_AngularServo(rs,'ras',21)
 #    print(rl.all)
 #    rl.max()
 #    sleep(4)
@@ -1032,8 +1097,13 @@ class Remote_Button(RemoteDigitalDevice):
 )
     '''
 
-    def __init__(self, remote_server,*args,**kwargs):
-        super().__init__(remote_server, 'Button', *args,**kwargs)
+    def __init__(self, remote_server,ident,*args,**kwargs):
+        if args!=():
+            if len(args)==1:
+                kwargs['args']=args
+            else:
+                raise ValueError(f"Button has 1 positional parameter")
+        super().__init__(remote_server,ident, 'Button',**kwargs)
         
 
         self.functions=  ['close', 'ensure_pin_factory', 'wait_for_active', 'wait_for_inactive', 'wait_for_press', 'wait_for_release']
@@ -1241,22 +1311,22 @@ class Remote_Button(RemoteDigitalDevice):
 #    def whfunc(x):
 #        logger.info(f"wh {x}")
 #
-#    server_ip = "raspy5"
+#    server_ip = "192.168.178.136"
 #    server_port = 8509
-#    
+    
     #l=Button(16)
     #print(getFunctions(l))
     #print(getReadOnlyProperties(l))
     #print(getWriteableProperties(l))
-#   
-#    #Create instance of remote Raspberry Pi
+   
+    #Create instance of remote Raspberry Pi
 #    rs = RemoteServer(server_ip, server_port)
-#    rl=Remote_Button(rs,5,hold_repeat=False)
+#    rl=Remote_Button(rs,'rbutton',5,hold_repeat=False,pull_up=True)
 #    rl.hold_time=1.0
-#   logger.info(rl.hold_time)
+#    logger.info(rl.hold_time)
 #    rl.hold_repeat=True
 #    logger.info(rl.hold_repeat)
-#    pause()
+#    #pause()
 #    sleep(1.0)
 #    x=rl.hold_repeat
 #    logger.info(x)
@@ -1280,6 +1350,7 @@ class Remote_MCP3208(RemoteDigitalDevice):
     **spi_args: Any
     )
     '''
+    
     ##################################################################################
     ## we expect remote_server, select_pin as first arguments,because they identify the SPI-device
     ## look the examples. If you want remote_server,channel as first arguments, you can do this, but
@@ -1287,15 +1358,17 @@ class Remote_MCP3208(RemoteDigitalDevice):
     # expects remote_server,pins as first positional arguments. Examples of rearrangement can be found
     # in the super class, where the numbering parameter ('b' or 'g') is considered
     #################################################################################
-    def __init__(self, remote_server,*args,**kwargs):
-        super().__init__(remote_server, 'MCP3208', *args,**kwargs)
+    def __init__(self, remote_server,ident,*args,**kwargs):
+        # by the above definition of MCP3208 only named parameters are allowed
+        if args!=():
+            kwargs['args']=args
+        super().__init__(remote_server,ident, 'MCP3208', **kwargs)
 
         self.functions=    ['close', 'ensure_pin_factory']
         self.readOnlyProperties = ['bits', 'channel', 'closed', 'differential', 'is_active', 'max_voltage', 
                                    'raw_value', 'value', 'values', 'voltage']
         self.writeableProperties=['pin_factory']
       
-    
     def ensure_pin_factory(self,**kwargs):
         self.func_exec(getFunctionName(),**kwargs) 
     ## open, close are treated in super_class   
@@ -1347,18 +1420,18 @@ class Remote_MCP3208(RemoteDigitalDevice):
     ## value is treated in the superclass                               
                                   
 #if __name__=='__main__':
-    #l=MCP3208(0,0)
-    #print(getFunctions(l))
-    #print(getReadOnlyProperties(l))
-    #print(getWriteableProperties(l))
-
-#    server_ip = "raspy5"
+#    #l=MCP3208(0,0)
+#    #print(getFunctions(l))
+#    #print(getReadOnlyProperties(l))
+#    #print(getWriteableProperties(l))
+#
+#    server_ip = "192.168.178.136"
 #    server_port = 8509
 #    
-    # Create instance of remote Raspberry Pi
+#    # Create instance of remote Raspberry Pi
 #    rs = RemoteServer(server_ip, server_port)
-#    rl=Remote_MCP3208(rs,8,channel=0)   # GPIO Pin 8 is the select pin, rs and pin are positional arguments
-#    rp=Remote_PWMLED(rs,21)
+#    rl=Remote_MCP3208(rs,'mcp',0)   # GPIO Pin 8 is the select pin
+#    rp=Remote_PWMLED(rs,'led',21)
 #    rp.source=rl
 #    while True:
 #        sleep(0.1)
@@ -1381,8 +1454,14 @@ class Remote_LineSensor(RemoteDigitalDevice):
 )
     '''
     
-    def __init__(self, remote_server,*args,**kwargs):
-        super().__init__(remote_server, 'LineSensor', *args,**kwargs)
+    def __init__(self, remote_server,ident,*args,**kwargs):
+        if args!=():
+            if len(args)==1:
+                kwargs['args']=args
+            else:
+                raise ValueError(f"LineSensor has 1 positional parameter")
+
+        super().__init__(remote_server,ident, 'LineSensor',**kwargs)
 
         self.functions=   ['close', 'ensure_pin_factory', 'wait_for_active', 'wait_for_inactive', 'wait_for_line', 'wait_for_no_line']
         self.readOnlyProperties =['active_time', 'closed', 'inactive_time', 'is_active', 'line_detected', 'partial', 'pin', 
@@ -1553,7 +1632,7 @@ class Remote_LineSensor(RemoteDigitalDevice):
     #print(getReadOnlyProperties(l))
     #print(getWriteableProperties(l))
 
-#    server_ip = "raspy5"
+#    server_ip = "192.168.178.136"
 #    server_port = 8509
 #    
 #   # Create instance of remote Raspberry Pi
@@ -1564,8 +1643,8 @@ class Remote_LineSensor(RemoteDigitalDevice):
 #    def wnlfunc(x):
 #        print(f"wnl {x}")
 #
-#    rl=Remote_LineSensor(rs,5,pull_up=True)   
-#    rp=Remote_PWMLED(rs,21)
+#    rl=Remote_LineSensor(rs,'rl',5,pull_up=True)   
+#    rp=Remote_PWMLED(rs,'rp',21)
 #    rl.threshold=0.6
 #    print(rl.threshold)
 #    rp.source=rl
@@ -1594,8 +1673,13 @@ class Remote_MotionSensor(RemoteDigitalDevice):
 )
     '''
     
-    def __init__(self, remote_server,*args,**kwargs):
-        super().__init__(remote_server, 'MotionSensor', *args,**kwargs)
+    def __init__(self, remote_server,ident,*args,**kwargs):
+        if args!=():
+            if len(args)==1:
+                kwargs['args']=args
+            else:
+                raise ValueError(f"MotionSensor has 1 positional parameter")
+        super().__init__(remote_server,ident, 'MotionSensor', **kwargs)
 
         self.functions= ['close', 'ensure_pin_factory', 'wait_for_active', 'wait_for_inactive', 'wait_for_motion', 'wait_for_no_motion']
         self.readOnlyProperties =['active_time', 'closed', 'inactive_time', 'is_active', 'motion_detected', 
@@ -1766,8 +1850,8 @@ class Remote_MotionSensor(RemoteDigitalDevice):
     #print(getReadOnlyProperties(l))
     #print(getWriteableProperties(l))
 
-#
-#    server_ip = "raspy5"
+
+#    server_ip = "192.168.178.136"
 #    server_port = 8509
 #    
 #   # Create instance of remote Raspberry Pi
@@ -1778,8 +1862,8 @@ class Remote_MotionSensor(RemoteDigitalDevice):
 #    def wnmfunc(x):
 #        print(f"wnm {x}")
 #
-#    rl=Remote_MotionSensor(rs,5,pull_up=True)   
-#    rp=Remote_PWMLED(rs,21)
+#    rl=Remote_MotionSensor(rs,'ms',5,pull_up=True)   
+#    rp=Remote_PWMLED(rs,'led',21)
 #    print(rl.is_active)
 #    rp.source=rl
 #    rl.wait_for_no_motion()
@@ -1806,8 +1890,13 @@ class Remote_LightSensor(RemoteDigitalDevice):
 )
     '''
     
-    def __init__(self, remote_server,*args,**kwargs):
-        super().__init__(remote_server, 'LightSensor', *args,**kwargs)
+    def __init__(self, remote_server,ident,*args,**kwargs):
+        if args!=():
+            if len(args)==1:
+                kwargs['args']=args
+            else:
+                raise ValueError(f"LightSensor has 1 positional parameter")
+        super().__init__(remote_server, ident,'LightSensor', **kwargs)
 
         self.functions= ['close', 'ensure_pin_factory', 'wait_for_active', 'wait_for_dark', 'wait_for_inactive', 'wait_for_light']   
         self.readOnlyProperties = ['active_time', 'charge_time_limit', 'closed', 'inactive_time', 'is_active', 'light_detected',
@@ -1984,11 +2073,11 @@ class Remote_LightSensor(RemoteDigitalDevice):
 #    #print(getReadOnlyProperties(l))
 #    #print(getWriteableProperties(l))
 #    #####################################
-#
-#    server_ip = "raspy5"
+
+#   server_ip = "192.168.178.136"
 #    server_port = 8509
-#    
-#   # Create instance of remote Raspberry Pi
+    
+   # Create instance of remote Raspberry Pi
 #    rs = RemoteServer(server_ip, server_port)
 #
 #    def wmfunc(x):
@@ -1996,8 +2085,8 @@ class Remote_LightSensor(RemoteDigitalDevice):
 #    def wnmfunc(x):
 #        print(f"wnm {x}")
 #
-#    rl=Remote_LightSensor(rs,5)   
-#    rp=Remote_PWMLED(rs,21)
+#    rl=Remote_LightSensor(rs,'rl',5)   
+#    rp=Remote_PWMLED(rs,'led',21)
 #    print(rl.is_active)
 #    rp.source=rl
 #    rl.wait_for_dark()
@@ -2026,8 +2115,13 @@ class Remote_DistanceSensor(RemoteDigitalDevice):
 
     '''
     
-    def __init__(self, remote_server,*args,**kwargs):
-        super().__init__(remote_server, 'DistanceSensor', *args,**kwargs)
+    def __init__(self, remote_server,ident,*args,**kwargs):
+        if args!=():
+            if len(args)==2:
+                kwargs['args']=args
+            else:
+                raise ValueError(f"DistanceSensor has 2 positional parameter: echo, trigger")
+        super().__init__(remote_server, ident, 'DistanceSensor', **kwargs)
 
         self.functions= ['close', 'ensure_pin_factory', 'wait_for_active', 'wait_for_in_range', 'wait_for_inactive', 'wait_for_out_of_range']
         self.readOnlyProperties = ['active_time', 'closed', 'distance', 'echo', 'in_range', 'inactive_time', 'is_active', 
@@ -2232,7 +2326,7 @@ class Remote_DistanceSensor(RemoteDigitalDevice):
     #print(getWriteableProperties(l))
     #####################################
 
-#    server_ip = "raspy5"
+#    server_ip = "192.168.178.136"
 #    server_port = 8509
 #    
 #   # Create instance of remote Raspberry Pi
@@ -2241,10 +2335,10 @@ class Remote_DistanceSensor(RemoteDigitalDevice):
 #    def wmfunc(x):
 #        print(f"wm {x}")
 #    def wnmfunc(x):
-#        print(f"wnm {x}")
+#        print(f"wnm {x}")#
 #
-#    rl=Remote_DistanceSensor(rs,26,22)   
-#    rp=Remote_PWMLED(rs,21)
+#    rl=Remote_DistanceSensor(rs,'rds',26,22)   
+#    rp=Remote_PWMLED(rs,'rp',21)
 #    print(rl.is_active)
 #    rp.source=rl
 #    rl.wait_for_in_range()
@@ -2274,19 +2368,14 @@ class Remote_RotaryEncoder(RemoteDigitalDevice):
     from multiprocessing import Lock
     import logging
     
-    def __init__(self, remote_server,*args,**kwargs):
-        self.rSW=None
-        ## args evaluation: looking for SW-Pin ##
-        args1=list(args)
-        if len(args1)>=3:
-            # pin1,pin2,pin3?,...
-            if type(args1[2])==int:
-                # SW is given
-                SW=args1.pop(2)
-                self.rSW=Remote_Button(remote_server,SW,pull_up=False)
-                args=tuple(args1)
+    def __init__(self, remote_server,ident,*args,**kwargs):
+        if args!=():
+            if len(args)==2:
+                kwargs['args']=args
+            else:
+                raise ValueError(f"RotaryEncoder has 2 positional parameter: a,b (named CLK,DT on the hardware-device)")
 
-        super().__init__(remote_server, 'RotaryEncoder', *args,**kwargs)
+        super().__init__(remote_server,ident, 'RotaryEncoder', **kwargs)
 
         self.functions=             ['close', 'ensure_pin_factory', 'wait_for_active', 'wait_for_inactive', 'wait_for_rotate',
                                     'wait_for_rotate_clockwise', 'wait_for_rotate_counter_clockwise']  
@@ -2309,17 +2398,29 @@ class Remote_RotaryEncoder(RemoteDigitalDevice):
         self._rotary_lock=Lock()
         self._steps_saved_wr_c_cc= 0 
         self.counter=0
-        self.rSW.when_pressed=self.reset_counter
-
-        
+        self.SW=None
 
 ##########################################################
 ## special treatment for RotaryEncoder
 ##########################################################  
+    def activateSW(self,pinNr,pull_up=True)->int:
+        try:
+            ret=1
+            if self.SW!=None:
+                raise ValueError("SW")
+            # SW is given
+            self.SW=Remote_Button(self.remote_server,f"{self.ident}_SW", pin=pinNr,pull_up=pull_up)
+            ret=0
+        except Exception as e:
+            logger.error(f"{e.__class__}: {str(e)}")
+            ret=1
+        finally:
+            return ret
+
+
     def reset_counter(self,x):
         with self._rotary_lock:
             self.counter=0
-        logger.info(f"reset_counter: {x}")
 
 
     def last_step(self,when_wait_text):
@@ -2528,14 +2629,14 @@ class Remote_RotaryEncoder(RemoteDigitalDevice):
                                   
 #if __name__=='__main__':
 #    from remoteio import RemoteServer
-    ####################################
-    # 
-    #l=RotaryEncoder(26,22)
-    #print(getFunctions(l))
-    #print(getReadOnlyProperties(l))
-    #print(getWriteableProperties(l))
-    #####################################
-
+#    ####################################
+#    # 
+#    #l=RotaryEncoder(26,22)
+#    #print(getFunctions(l))
+#    #print(getReadOnlyProperties(l))
+#    #print(getWriteableProperties(l))
+#    #####################################
+#
 #    def wrfunc(x):
 #        #print(f"wr {rl.steps}")
 #        pass
@@ -2546,31 +2647,29 @@ class Remote_RotaryEncoder(RemoteDigitalDevice):
 #        print(f"wrcc steps: {rl.steps}")
 #        print(f"wrcc counter: {rl.counter}")
 #        pass
-#
-#    server_ip = "raspy5"
+#    
+#    server_ip = "192.168.178.136"
 #    server_port = 8509
 #    
 #   # Create instance of remote Raspberry Pi
 #    rs = RemoteServer(server_ip, server_port)
-#    
-#    rl=Remote_RotaryEncoder(rs,17,18,27, wrap=True)   # CLK, DT, SW
+#    pin=map_bg(29,'b')  # GpioPin 5
+#    rl=Remote_RotaryEncoder(rs,'re',a=19,b=26, wrap=True)      # CLK, DT
+#    rl.activateSW(pin,pull_up=True)                            # push button of the rotary encoder, default pull_up=True
+#    #or
+#    #rl.SW=Remote_Button(rs, f"{rl.ident}_SW",pin,pull_up=true)   # SW pullup=True expected by the rotary encoder used here
 #
-#
-#
-#   #or
-#    #rl=Remote_RotaryEncoder(rs,17,18, wrap=True)   # CLK, DT
-#    #rb=Remote_Button(rs,27,pull_up=False)          # SW pullup=False important
-#    #rb.when_pressed = rl.reset_counter  # method, because dependent from object
-#                                        # well interpreted
-#                    
-#    rp=Remote_PWMLED(rs,21)
+#    rl.SW.when_pressed = rl.reset_counter           # method not function, because dependent from object
+#                                                    # well interpreted by gpiozero
+#    print(rl.SW.ident)                 
+#    rp=Remote_PWMLED(rs,'led',21)
 #    print(rl.is_active)
 #    rl.when_rotated=wrfunc               # function
 #    rl.when_rotated_clockwise=wrcfunc    # function
 #    rl.when_rotated_counter_clockwise=wrccfunc # method
 #    rl._source_delay=0.02                 # generator_function of rl made slower
 #    rp.source=rl
-#    print(rl.rSW.when_pressed)            # builtin when SW pin is in RotaryEncoder definition 
+#    print(rl.SW.when_pressed)            # builtin when SW pin is in RotaryEncoder definition 
 #    print(rl.when_rotated)
 #    print(rl.when_rotated_clockwise)
 #    #print(rb.when_pressed)
@@ -2598,14 +2697,16 @@ class Remote_LEDBoard(RemoteDigitalDevice):
     )
     '''
 
-    def __init__(self, remote_server,*args,**kwargs):
-        super().__init__(remote_server, 'LEDBoard', *args,**kwargs)
+    def __init__(self, remote_server,ident,*args,**kwargs):
+        if args!=():
+            kwargs['args']=args
+        super().__init__(remote_server, ident, 'LEDBoard', **kwargs)
 
         self.functions=           ['blink', 'close', 'ensure_pin_factory', 'off', 'on', 'pulse', 'toggle']     
         self.readOnlyProperties = ['active_high', 'all', 'closed', 'is_active', 'is_lit', 'leds', 'namedtuple', 'values']
         self.writeableProperties= ['pin_factory', 'source', 'source_delay', 'value'] 
 
-      
+    
     def blink(self,**kwargs):
         self.func_exec(getFunctionName(),**kwargs)
     def ensure_pin_factory(self,**kwargs):
@@ -2681,22 +2782,47 @@ class Remote_LEDBoard(RemoteDigitalDevice):
     @source_delay.setter
     def source_delay(self,wert):
         self.func_exec('set',source_delay=wert)  
-
-    ## source, value are treated in superclass                               
+    ############################################### 
+    def LEDBoardValue(self,**kwargs):
+        return tuple(kwargs.values())
+    @property
+    def value(self):
+        # This is the call to the original set method 
+        x = RemoteDigitalDevice.value.fget(self) 
+        return eval('self.' + str(x)) 
+    @value.setter
+    def value(self,wert):
+        # This is the call to the original set method 
+        RemoteDigitalDevice.value.fset(self, wert)     
+    ################################################
+    ## source is treated in superclass   
+    ## value property of superclass is here overwritten                            
                                   
 #if __name__=='__main__':
-    #l=LEDBoard(20,21)
-    #print(getFunctions(l))
-    #print(getReadOnlyProperties(l))
-    #print(getWriteableProperties(l))
-#
-#    server_ip = "raspy5"
+#    server_ip = "192.168.178.136"
 #    server_port = 8509
+#    
+#    #l=LEDBoard(20,21)
+#    #print(getFunctions(l))
+#    #print(getReadOnlyProperties(l))
+#    #print(getWriteableProperties(l))
+#
 #    
 #    # Create instance of remote Raspberry Pi
 #    rs = RemoteServer(server_ip, server_port)
-#    rl=Remote_LEDBoard(rs,16,20,21)
-# 
+#    
+#
+#    # _order in combination with named leds defines how the property value has to be interpreted.
+#    # here value=(led1.value,led2.value,led3.value)
+#    rl=Remote_LEDBoard(rs,'rlb',led2=16,led1=20,led3=21,pwm=True,_order=('led1','led2','led3'))
+#    rl.value=(1,0,1) # pin20,pin16,pin21
+#    logger.info(RemoteDigitalDevice.value.fget(rl))
+#    pause()
+#
+#    rl=Remote_LEDBoard(rs,'rlb',16,20,21,pwm=True)
+#    rl.value=(1,0,1) # pin 16,20,21
+#    logger.info(RemoteDigitalDevice.value.fget(rl))  # anonymeous alphabetic order
+#
 #    print(rl.is_active)
 #    rl.blink()
 #    sleep(10)
@@ -2710,7 +2836,7 @@ class Remote_LEDBoard(RemoteDigitalDevice):
 #    rl.toggle(0,1,2)
 #    pause()
 ####################################################################
-###############################################################################
+####################################################################
 class Remote_LEDBarGraph(RemoteDigitalDevice):
     '''
     class LEDBarGraph(
@@ -2722,8 +2848,10 @@ class Remote_LEDBarGraph(RemoteDigitalDevice):
     )   
     '''
 
-    def __init__(self, remote_server,*args,**kwargs):
-        super().__init__(remote_server, 'LEDBarGraph', *args,**kwargs)
+    def __init__(self, remote_server,ident,*args,**kwargs):
+        if args!=():
+            kwargs['args']=args
+        super().__init__(remote_server, ident,'LEDBarGraph', **kwargs)
 
         self.functions=           ['close', 'ensure_pin_factory', 'off', 'on', 'toggle']
         self.readOnlyProperties = ['active_high', 'all', 'closed', 'leds', 'namedtuple', 'values']
@@ -2769,8 +2897,7 @@ class Remote_LEDBarGraph(RemoteDigitalDevice):
         return self.getProperty(getFunctionName())
     @property
     def closed(self):
-        return self.getProperty(getFunctionName()) 
-        return self.getProperty(getFunctionName())
+        return self.getProperty(getFunctionName())  
     @property
     def leds(self):
         return self.getProperty(getFunctionName())
@@ -2797,13 +2924,15 @@ class Remote_LEDBarGraph(RemoteDigitalDevice):
         return self.getProperty(getFunctionName())    
     @pin_factory.setter
     def pin_factory(self,wert):
-        self.func_exec('set',pin_factory=wert)  
+        self.func_exec('set',pin_factory=wert)
+    ###########################################################                    
     @property
     def source_delay(self):
         return self.getProperty(getFunctionName())    
     @source_delay.setter
     def source_delay(self,wert):
         self.func_exec('set',source_delay=wert)  
+    ###########################################################
 
     ## source, value are treated in superclass                               
                                   
@@ -2813,23 +2942,27 @@ class Remote_LEDBarGraph(RemoteDigitalDevice):
     #print(getReadOnlyProperties(l))
     #print(getWriteableProperties(LEDBarGraph(l))
  
-#    server_ip = "raspy5"
-#    server_port = 8509
+    #server_ip = "192.168.178.136"
+    #server_port = 8509
     
-#    # Create instance of remote Raspberry Pi
-#    rs = RemoteServer(server_ip, server_port)
-#    rl=Remote_LEDBarGraph(rs,16,20,21)
-#    remote_mcp=Remote_MCP3208(rs,8,channel=0) # select_pin = 8
-#
-#    #rl.source=remote_mcp   # ok
-#   
-#    rl.value=2/3
-#    sleep(5)
-#    rl.value=-1/3
-#    sleep(5)
-#    rl.value=-2/3
-#    sleep(5)
-#    rl.value=1
-#    sleep(5)
-#    rl.off()
-#    pause()
+    # Create instance of remote Raspberry Pi
+    #rs = RemoteServer(server_ip, server_port)
+    #rl = Remote_LEDBarGraph(rs,'rlbg',16,20,21)
+    #remote_mcp=Remote_MCP3208(rs,'mcp',0,0)
+    #print(remote_mcp.value)
+    #pause()
+    #rl.source=remote_mcp   # ok
+   
+    #rl.value=2/3
+    #sleep(5)
+    #rl.value=-1/3
+    #sleep(5)
+    #rl.value=-2/3
+    #sleep(5)
+    #rl.value=1
+    #sleep(5)
+    #rl.off()
+    #pause()
+############################################################################
+
+        
