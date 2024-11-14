@@ -57,14 +57,14 @@ if __name__ == "__main__":
 
 ## Client usage
 ```
-from remoteio import RemoteServer,
+from remoteio import RemoteServer, Remote_LED, map_bg
 
 if __name__ == "__main__":
     server_ip = "192.168.1.38"
     server_port = 1234
 
     remote_server = RemoteServer(server_ip, server_port)
-    remote_pin = Remote_LED(remote_server,map_bg(7, 'b'))
+    remote_pin = Remote_LED(remote_server,ident,map_bg(7, 'b'))    # ident is a freely chooseable string.
 
     #you can say Remote_LED, remote_PWMLED, Remote_xxx,
     #where xxx is the name of a supported gpiozero device
@@ -80,15 +80,12 @@ if __name__ == "__main__":
 
 ### Use Board numbering
 ```
-remote_pin = remote_LED(remote_server,7, 'b') # Use physical board numbering
+remote_pin = remote_LED(remote_server,ident,map_bg(7, 'b')) # Use physical board numbering
 ```
-### Use GPIO numbering
+### Use GPIO numbering (default)
 ```
-remote_pin = remote_LED(remote_server,4, 'g') # Use GPIO numbering (e.g. GPIO4)
+remote_pin = remote_LED(remote_server,ident,4) # Use GPIO numbering (e.g. GPIO4)
 ```
-### GPIO numbering is default
-```
-remote_pin = remote_LED(remote_server,4) # Use GPIO numbering (e.g. GPIO4)
-```
+
 
 
