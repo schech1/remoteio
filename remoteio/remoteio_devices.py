@@ -2972,7 +2972,7 @@ class Remote_Compositum():
         self._gpiozero_elements=[]
         self.addComponent(*args)
         self.ident=RemoteSupervisor.genServerIdent()
-        RemoteSupervisor._ident_dict[self.ident]=self.ident
+        self.setClientIdent(self.ident)
 
     def getClientIdent(self):
         return RemoteSupervisor._ident_dict[self.ident]
@@ -3065,6 +3065,7 @@ if __name__=='__main__':
     rl1=Remote_RGBLED(rs,16,18,20,pwm=True)
     rl2=Remote_PWMLED(rs,22)
     rl3=Remote_PWMLED(rs,21)
+    rl1.close()
     rc=Remote_Compositum(rl1,rl2)
     rc1=Remote_Compositum(rc,rl3)
     rl1.setClientIdent('rs.rl1')
@@ -3077,6 +3078,7 @@ if __name__=='__main__':
     print(rl3.getClientIdent())
     print(rc.getClientIdent())
     print(rc1.getClientIdent())
+    print(list(RemoteSupervisor._ident_dict.keys()))
     #print(rc1._childs)
     #print(rc1._gpiozero_elements)
     #print(rc1._gpiozero_elements_dict)
@@ -3088,15 +3090,18 @@ if __name__=='__main__':
     print(rl3.value)
     rc1.off()
     rc1.on(-1)
+   
     print(rc1.value)
     sleep(5)
     rc1.off(-2,-1)
     print(rc1.value)
     sleep(5)
+    rl1.open()
     rc1.toggle(0,1)
     print(rc1.value)
     sleep(5)
-    rc1.value={rc.getClientIdent(): {rl1.getClientIdent(): (0,1,0), rl2.getClientIdent(): 1}, rl3.getClientIdent(): 0}
+   
+    rc1.value={rc.getClientIdent(): {rl1.getClientIdent(): (1,1,0), rl2.getClientIdent(): 1}, rl3.getClientIdent(): 1}
     print(rc1.value)
     sleep(5)
     rc1.pulse()

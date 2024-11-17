@@ -18,11 +18,17 @@ def timeOut(obj_type, command):
     logger.info(f"({obj_type},{command}) timed out")
 
 class RemoteSupervisor():
-    _ident_list=[]
+
 
     ## translator: server_ident client_ident
     _ident_dict={}
 
+    @classmethod
+    def server_identExists(cls,ident):
+        ret=False
+        if ident in RemoteSupervisor._ident_dict.keys():
+            ret=True
+        return ret
     @classmethod
     def client_identExists(cls,ident):
         ret=False
@@ -33,7 +39,9 @@ class RemoteSupervisor():
     @classmethod
     def genServerIdent(cls):
         ret=None
-        index=len(RemoteSupervisor._ident_dict)
+        index=0
+        while f"dev_{index}" in RemoteSupervisor._ident_dict.keys():
+            index+=1
         ret=f"dev_{index}"
         return ret
     @classmethod
@@ -48,7 +56,6 @@ class RemoteServer:
         self.server_port = server_port
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_socket.connect((self.server_ip, self.server_port))
-        self._ident_list=[]
         ### synchronizing of access to tcp/Ip-connection by different threads
         self.conn_lock=Lock()
 
@@ -66,9 +73,12 @@ class RemoteDevice:
         self.remote_server=remote_server
         self.client_socket=remote_server.client_socket
         self.command='off'
+
         self.ident=RemoteSupervisor.genServerIdent()
         self.setClientIdent(self.ident)
+        
         self.kwargs=kwargs
+        self._create_kwargs=None
         self.obj_type=obj_type
         self._value=None
         self._closed=False
@@ -112,8 +122,6 @@ class RemoteDevice:
             raise ValueError("Device is closed!")
         my_kwargs={}
         self.func_exec('close',**my_kwargs)
-        ## delete from _pin_list
-        self.remote_server._ident_list.remove(self.ident)
         self._closed=True
 
     def open(self):
@@ -121,11 +129,11 @@ class RemoteDevice:
         ## is open ##
         if self._closed==False:
             raise ValueError("Device is open!")
-        my_kwargs={}
-        self.func_exec('_create',**my_kwargs)
-        self.remote_server._ident_list.append(self.ident)
+        my_kwargs=self._create_kwargs
         self._closed=False
+        self.func_exec('_create',**my_kwargs)
 
+    
     def getProperty(self,my_property):
         try:
             return self.get(property=(my_property,))[my_property]
@@ -194,6 +202,9 @@ class RemoteDevice:
                     return None
             
     def func_exec(self,name,**func_kwargs):
+        ## reduce traffic on line ##
+        if self._closed:
+            return None
         self.command=name
         self.kwargs.clear()
 
@@ -288,10 +299,11 @@ class RemoteDevice:
 ##########################################################################
 
 class RemoteDigitalDevice(RemoteDevice):
-    def __init__(self, remote_server, obj_type, *args,**kwargs):          
-        RemoteDevice.__init__(self,remote_server,obj_type, *args, **kwargs)
+    def __init__(self, remote_server, obj_type, **kwargs):          
+        RemoteDevice.__init__(self,remote_server,obj_type, **kwargs)
 
         ## for some necessary locking
+        self._create_kwargs=kwargs
         self._Lock = Lock()
         self._create()
   
