@@ -6,7 +6,7 @@ https://github.com/gpiozero/gpiozero
 # remotio delegating to gpiozero
 A remoteio device needs the remote server, where the device is situated, further an ident to identify it on the server for actions.
 Last not least the obj_type of the device is needed to work with the right gpiozero device.
-The client transfers the following parameter to the server to work witha gpiozero device:
+The client transfers the following parameter to the server to work with a gpiozero device:
   ident,obj_type,*args,**kwargs
 While ident and obj_type are needed by remoteio the parameter *args and **kwargs are directly delegated to the gpiozero device
 
@@ -16,14 +16,14 @@ While ident and obj_type are needed by remoteio the parameter *args and **kwargs
    The ident is automatically generated for the handling with the server, obj_type is just XXX
 
 3. A command like blink(**kwargs) or on(*args) is to be used as described in the API of gpiozero.
-   Further remoteio suupports on(on_time) for a short impuls realized by blink(on_time=on_time,off_time=0,n=1).
+   Further remoteio supports on(on_time) for a short impuls realized by blink(on_time=on_time,off_time=0,n=1).
 
 4. remoteio supports a Remoteio_Compositum device, defined by having the attributes on,off,toggle,blink. It supports
   pulse for the gpiozero devices of the Compositum that can pulse. The functions getClientDevice(), setClientDevice() are used to make messages more readable by
   the user. At this purpose gpiozero offers **namedpins and *_order.
 
 5. remoteio supports expressions like led.value=... by the use of properties.
-   The attributes of a gpiozero device are reflected in the corresponding remote io device. Remoteio differs between functions, attributes that are only readable and writeable attributes.
+   The attributes of a gpiozero device are reflected in the corresponding remoteio device. Remoteio differs between functions, attributes that are only readable and writeable attributes.
    The remoteio_client.py acts as a kernel for all devices, so that all remote devices are programmed in the same manner.
 
 For details study the examples in controller.py
