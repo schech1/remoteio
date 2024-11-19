@@ -4,6 +4,7 @@ from multiprocessing import Process, Queue, Event, Lock,Pipe, current_process,pa
 import time
 import logging
 from remoteio import PORT, evalAllowed
+from remoteio.remoteio_wrapper import *
 import threading 
 from gpiozero import * 
 from colorzero import Color,Red,Green,Blue
@@ -133,7 +134,7 @@ def handle_Device(qu:Queue,ev,lo,child_conn):
                             for x in Dict['property']:
                                 func=getattr(rdevice,x)
                                 if (type(func)) not in evalAllowed:
-                                    data+=f"'{x}' : '{str(func)}',"
+                                    data+=f"'{x}' : \"{str(func)}\","
                                 else:
                                     data+=f"'{x}' : {func},"
                             if data!="!G{":

@@ -28,4 +28,4 @@ PIN_MAP_bg={
     37:26,
     13:27
 }
-evalAllowed=(type(None),int,str,float,bool,str,list,dict)
+evalAllowed=(type(None),int,str,float,bool,str)

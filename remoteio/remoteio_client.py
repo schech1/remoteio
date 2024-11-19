@@ -193,10 +193,10 @@ class RemoteDevice:
 
             match ret[0:2]:
                 case "??": 
-                    logger.info(ret)
+                    logger.error(ret)
                     raise RuntimeError(ret)
                 case "!G":
-                    ### message to get-command from server ###   
+                    ### message to get-command from server ###  
                     return eval(ret[2:])
                 case _:
                     return None
