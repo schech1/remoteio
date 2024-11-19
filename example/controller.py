@@ -569,3 +569,33 @@ if __name__=='__main__':
 #        temperature = sensor.value
 #        print("The temperature is %s celsius" % temperature)
 #        sleep(1)   
+########################################################################
+# Remote_State
+########################################################################
+#if __name__=='__main__': 
+#    from remoteio import Remote_LED,Remote_Motor
+#    server_ip = "192.168.178.136"
+#    server_port = 8509
+#    # Create instance of remote Raspberry Pi
+#    rs = RemoteServer(server_ip, server_port)
+#    rl=Remote_LED(rs,16)
+#    mo=Remote_Motor(rs,20,21)
+#    w1=Remote_W1Device(rs)
+#    st=Remote_State(rl,mo,w1)
+#    rl.on()
+#    mo.backward(speed=0.5)
+#    ## read values of remote devices only one time, then work with result x
+#    x=st.value
+#    print(rl._value)
+#    print(mo._value)
+#    print(w1._value)
+#    print(st._value)
+#    rl.off()
+#    mo.forward(speed=1)
+#    x=st.value
+#    print(rl._value)
+#    print(mo._value)
+#    print(w1._value)
+#    print(st._value)
+#    pause()
+##################################################################
