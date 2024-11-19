@@ -3,7 +3,7 @@ A Raspberry Pi GPIO remote control based on gpiozero
 
 https://github.com/gpiozero/gpiozero
 
-# remotio delegating to gpiozero
+# remotio with extensions to non gpiozero devices
 A remoteio device needs the remote server, where the device is situated, further an ident to identify it on the server for actions.
 Last not least the obj_type of the device is needed to work with the right gpiozero device.
 The client transfers the following parameter to the server to work with a gpiozero device:
@@ -20,11 +20,18 @@ While ident and obj_type are needed by remoteio the parameter *args and **kwargs
 
 4. remoteio supports a Remoteio_Compositum device, defined by having the attributes on,off,toggle,blink. It supports
   pulse for the gpiozero devices of the Compositum that can pulse. The functions getClientDevice(), setClientDevice() are used to make messages more readable by
-  the user. At this purpose gpiozero offers **namedpins and *_order.
+  the user. At this purpose gpiozero offers **namedpins and *_order. Note that the devices used in Remote_Compositum may be situated on different server.
 
 5. remoteio supports expressions like led.value=... by the use of properties.
    The attributes of a gpiozero device are reflected in the corresponding remoteio device. Remoteio differs between functions, attributes that are only readable and writeable attributes.
    The remoteio_client.py acts as a kernel for all devices, so that all remote devices are programmed in the same manner.
+
+6. As extensions also non gpio zero devices may be used. But these classes must be wrapped in a form that they can be applied. As example Remote_W1Device in remote_extensions.py and
+   W1Device in remote_wrapper.py are realized in order to read temperatures. Another Compositum is Remote_State in remote_extensions.py. For each remote device x the expression x.value
+   reads the value of the device x on the server. Remote_State(x1,x2,...).value furnishes x1.value, x2.value,... These values are locally memorized in x1._value, x2._value, ...,
+   i.e. the actual state of the device system.
+   You can then take a decision how to change the system without provocating a high traffic between client and server. Remember, that the devices used here need not to be situated on the same server.
+   
 
 For details study the examples in controller.py
       
