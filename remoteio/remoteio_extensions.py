@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from remoteio import RemoteDigitalDevice
+from remoteio import RemoteDigitalDevice,RemoteSupervisor
 from remoteio import RemoteServer
 from remoteio import getFunctionName,shortestWay,map_bg,getName
 from remoteio import getFunctions,getReadOnlyProperties,getWriteableProperties
@@ -51,24 +51,109 @@ class Remote_W1Device(RemoteDigitalDevice):
         x=eval(x)
         return x
     #########################################################      
-if __name__=='__main__':
-    #from w1thermsensor import Sensor 
+#if __name__=='__main__':
+#    #from w1thermsensor import Sensor 
+#
+#    server_ip = "192.168.178.136"
+#    server_port = 8509
+#    # Create instance of remote Raspberry Pi
+#    rs = RemoteServer(server_ip, server_port)
+#    sensor=Remote_W1Device(rs)
+#    print(sensor.available_sensors)
+#
+#    sensor=Remote_W1Device(rs,sensor_type='Sensor.DS18B20', sensor_id="'00000cb6ad51'")
+#    #print(getFunctions(sensor))
+#    #print(getReadOnlyProperties(sensor))
+#    #print(getWriteableProperties(sensor))
+#    
+#    print(f"Resolution: {sensor.resolution}")
+#    print(f"available_sensors: {sensor.available_sensors}")
+#    while True:
+#        temperature = sensor.value
+#        print("The temperature is %s celsius" % temperature)
+#        sleep(1)  
+#    pause()
+######################################################################
+######################################################################
+class Remote_State:
+    def __init__(self,*args):
+        self._childs=[]
+        self._value={}
+        self._gpiozero_elements=[]
+        self.addComponent(*args)
+        self.ident=RemoteSupervisor.genServerIdent()
+        self.setClientIdent(self.ident)
 
-    server_ip = "192.168.178.136"
-    server_port = 8509
-    # Create instance of remote Raspberry Pi
-    rs = RemoteServer(server_ip, server_port)
-    sensor=Remote_W1Device(rs)
-    print(sensor.available_sensors)
+    def getClientIdent(self):
+        return RemoteSupervisor._ident_dict[self.ident]
+    def setClientIdent(self,ident):
+        RemoteSupervisor.setClientIdent(self.ident,ident)
 
-    sensor=Remote_W1Device(rs,sensor_type='Sensor.DS18B20', sensor_id="'00000cb6ad51'")
-    #print(getFunctions(sensor))
-    #print(getReadOnlyProperties(sensor))
-    #print(getWriteableProperties(sensor))
-    
-    print(f"Resolution: {sensor.resolution}")
-    print(f"available_sensors: {sensor.available_sensors}")
-    while True:
-        temperature = sensor.value
-        print("The temperature is %s celsius" % temperature)
-        sleep(1)   
+    def addComponent(self,*compTuple):
+        for comp in compTuple:
+            if  hasattr(comp,'value')   and \
+                not comp in self._childs:
+                if isinstance(comp,Remote_State):
+                    for x in comp._gpiozero_elements:
+                        if x in self._gpiozero_elements:
+                           raise ValueError(f"{comp.getClientIdent()}: {x.getClientIdent()} is already related to " + 
+                                             "{self.getClientIdent()}")
+                    self._gpiozero_elements     +=comp._gpiozero_elements     
+                else:
+                    if not comp in self._gpiozero_elements:
+                        self._gpiozero_elements.append(comp)
+                    else:
+                        raise ValueError(f"{comp.getClientIdent()} is already related to {self.getClientIdent()}")
+                self._childs.append(comp)
+            else:
+                raise ValueError(f"{comp.getClientIdent()} is not a valid Component")
+                        
+    def popComponent(self,comp):
+        if comp in self._childs:
+            self.pop(comp)
+        
+    def getChild(self,index):
+        if 0 <= index < len(self._childs):
+            return self._childs[index]
+        else:
+            return None
+
+    @property
+    def value(self):
+        self._value={}
+        for child in self._childs:
+            self._value[child.getClientIdent()] = child.value
+        return self._value
+    @value.setter
+    def value(self,wert):
+         for child in self._childs:
+            child.value=wert[child.getClientIdent()]
+#################################################
+#if __name__=='__main__': 
+#    from remoteio import Remote_LED,Remote_Motor
+#    server_ip = "192.168.178.136"
+#    server_port = 8509
+#    # Create instance of remote Raspberry Pi
+#    rs = RemoteServer(server_ip, server_port)
+#    rl=Remote_LED(rs,16)
+#    mo=Remote_Motor(rs,20,21)
+#    w1=Remote_W1Device(rs)
+#    st=Remote_State(rl,mo,w1)
+#    rl.on()
+#    mo.backward(speed=0.5)
+#    ## read values of remote devices only one time, then work with result x
+#    x=st.value
+#    print(rl._value)
+#    print(mo._value)
+#    print(w1._value)
+#    print(st._value)
+#    rl.off()
+#    mo.forward(speed=1)
+#    x=st.value
+#    print(rl._value)
+#    print(mo._value)
+#    print(w1._value)
+#    print(st._value)
+#    pause()
+##################################################################
+##################################################################
