@@ -545,3 +545,27 @@ if __name__=='__main__':
 #    sleep(5)
 #    rc1.pulse()
 #    pause()
+####################################################################################
+# Remote_W1Device
+####################################################################################
+#if __name__=='__main__':
+#    #from w1thermsensor import Sensor 
+#
+#    server_ip = "192.168.178.136"
+#    server_port = 8509
+#    # Create instance of remote Raspberry Pi
+#    rs = RemoteServer(server_ip, server_port)
+#    sensor=Remote_W1Device(rs)
+#    print(sensor.available_sensors)
+#
+#    sensor=Remote_W1Device(rs,sensor_type='Sensor.DS18B20', sensor_id="'00000cb6ad51'")
+#    #print(getFunctions(sensor))
+#    #print(getReadOnlyProperties(sensor))
+#    #print(getWriteableProperties(sensor))
+#    
+#    print(f"Resolution: {sensor.resolution}")
+#    print(f"available_sensors: {sensor.available_sensors}")
+#    while True:
+#        temperature = sensor.value
+#        print("The temperature is %s celsius" % temperature)
+#        sleep(1)   
