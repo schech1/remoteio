@@ -4,4 +4,5 @@ from .remoteio_client import RemoteServer,RemoteDigitalDevice,RemoteSupervisor
 from .remoteio_server import run_server
 from .remoteio_devices import *
 from .remoteio_wrapper import *
+from remoteio_extensions import *
 
