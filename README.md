@@ -3,37 +3,38 @@ A Raspberry Pi GPIO remote control based on gpiozero
 
 https://github.com/gpiozero/gpiozero
 
-# new behavior of remoteio: simultaneous processing of remote pins
-The idea is to use some remote server for manipulating e.g. an idustrial process in the case where you need more pins than the client raspberry pi can offer.
-The behavior of led.on(),led.off(),led.pulse() on the remote rpi is the same as when the client would perform them itself.
-For industrial processes there is beside constant signal the necessity of impulses. Therefore led.on(time_ms) is possible. Naturally led.pulse(time_ms) and led.blink(time_ms) are also
-allowed, perhaps of advantage for some visualization. The use of threads for realisation shows problems for blinking and pulsing. Because threads have no effective time sharing, multiprocessing is used
-in order to guarantee the right bevavior of pulsing and blinking. For one pin, if several tasks are send to the server, all these tasks are executed one after the other as given by the client. A task pin.close() is allowed. Tasks for different pins are treated independently, simultaneously. The remoteio project forces the use of a set of pins. These pins are closed together, when the communication to the server is closed by the client. But this closing is a soft closing, that guarantees that all tasks transferred from the client are perfomed before closing the leds. The function run_server of remoteio_server has two modi. One mode ('wait') garantees that each manipulating of a remote pin is executed, the other mode ('nowait') interrupts a preceeding manipulate-task when a new manipulating of the same pin reaches the server before the preceeding task is finished.  
+# remotio with extensions to non gpiozero devices
+A remoteio device needs the remote server, where the device is situated, further an ident to identify it on the server for actions.
+Last not least the obj_type of the device is needed to work with the right gpiozero device.
+The client transfers the following parameter to the server to work with a gpiozero device:
+  ident,obj_type,*args,**kwargs
+While ident and obj_type are needed by remoteio the parameter *args and **kwargs are directly delegated to the gpiozero device
 
-The main technical ideas in remoteio_server.py are the use of 
-  1. queing of received data to avoid time loss in receiving data
-  2. an own process for each pin for treating pins simultaneously
-  3. multiprocessing safe queues for each pin as input to the pin-specific processes
-  4. the getattr function to find led-funtions only by knowing the name of the function
-  5. synchronization technics necessary because of multiprocessing
-  6. special treating of the reveive-buffer, necessary when more data then the length of the receive-buffer(size)=1024 come in.
-  7. communication of success to the client: remoteio_server.handle_client(...) <----> remoteio_client.remote_pin.execute()
-  8. use of the queue from handle_client ---> handle_led in the other direction in order to synchronize led creation and process generation.
+1. creating a gpiozero device
+   rs=RemoteServer(ip_adress,port)
+   led=Remote_XXX(rs,*args,**args), where xxx is the name of a gpiozero device like LED,PWMLED,RGBLED etc.
+   The ident is automatically generated for the handling with the server, obj_type is just XXX
 
-Main ideas in remoteio_server
-  1. def run_server(port=PORT,mode='wait') with a further parameter mode, that defaults to 'wait'.
-     In the mode 'wait' each pin-manipulation that reaches the server is executed, even if the connection is interrupted.
-     In the mode 'nowait' a pin-manipulation interrupts the preceeding one, even if time_ms is not finished.
-     
-Main ideas in remote_client.py 
-1. internal pin numbering is board numbering. Gpio-numbering is internally translated in board numbering. This simplifies the verification whether someone wants to define a remotr pin two times.
-2. led.cose() is allowed, all tasks for a closed pin are ignored. This is communicated to the client.
-3. led.blink(tims_ms,arg1,arg2) is allowed, for defining different on and off times.
-4. led.value(time_ms,arg1) is allowed for a constant light which is not the maximum possible light of a led.
-5. led.off(time_ms) is allowed.
-6. An internal create function for remote-pin generation, allowing to verify whether the pin is busy on the server.
+3. A command like blink(**kwargs) or on(*args) is to be used as described in the API of gpiozero.
+   Further remoteio supports on(on_time) for a short impuls realized by blink(on_time=on_time,off_time=0,n=1).
+
+4. remoteio supports a Remoteio_Compositum device, defined by having the attributes on,off,toggle,blink. It supports
+  pulse for the gpiozero devices of the Compositum that can pulse. The functions getClientDevice(), setClientDevice() are used to make messages more readable by
+  the user. At this purpose gpiozero offers **namedpins and *_order. Note that the devices used in Remote_Compositum may be situated on different server.
+
+5. remoteio supports expressions like led.value=... by the use of properties.
+   The attributes of a gpiozero device are reflected in the corresponding remoteio device. Remoteio differs between functions, attributes that are only readable and writeable attributes.
+   The remoteio_client.py acts as a kernel for all devices, so that all remote devices are programmed in the same manner.
+
+6. As extensions also non gpio zero devices may be used. But these classes must be wrapped in a form that they can be applied. As example Remote_W1Device in remote_extensions.py and
+   W1Device in remote_wrapper.py are realized in order to read temperatures. Another Compositum is Remote_State in remote_extensions.py. For each remote device x the expression x.value
+   reads the value of the device x on the server. Remote_State(x1,x2,...).value furnishes x1.value, x2.value,... These values are locally memorized in x1._value, x2._value, ...,
+   i.e. the actual state of the device system.
+   You can then take a decision how to change the system without provocating a high traffic between client and server. Remember, that the devices used here need not to be situated on the same server.
    
-By the above changes you can fully use the watch of the remote server. But be aware,if you send only tasks with time_ms>0 to the server. These tasks are immediately memorized on the server. If you make therein several client.close commandos and connection generations, it can happen that a Led is busy on the server side and an error is thrown on the client side. client.close() should only be done when the connection is no more needed. Remoteio treats tests with multiple opens  and closes without problem. But the create of a pin is rejected when the pin is busy. 
+
+For details study the examples in controller.py
+      
 
 ## Server (remote Raspberry Pi)
 Use this all-in-one command to install remoteio as deamon on port `8509`.
@@ -74,20 +75,21 @@ if __name__ == "__main__":
     server_port = 1234
 
     remote_server = RemoteServer(server_ip, server_port)
-    remote_pin = remote_server.pin(7, 'b')
-    remote_pin.on(time_ms=2000) # (Optional) Time until switch off
+    remote_pin = Remote_LED(remote_server,pinNr)
+    remote_pin.on(on_time=2.0) # (Optional) Time until switch off in sec
     remote_pin.blink() # Blink LED
     remote_pin.pulse() # Pulse LED
     remote_pin.off()
     remote_server.close()
+# A complete set of examples is in controller.py
 ```
 
 ### Use Board numbering
 ```
-remote_pin = remote_server.pin(7, 'b') # Use physical board numbering
+pinNr = map_bg(7, 'b') # physical board number is translated to GPIO4
 ```
 ### Use GPIO numbering
 ```
-remote_pin = remote_server.pin(4, 'g') # Use GPIO numbering (e.g. GPIO4)
+pinNr = 4 # GPIO numbering (e.g. GPIO4) is default
 ```
 
