@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import logging
+logger = logging.getLogger(__name__)
+
 PORT=8509
 PIN_MAP_bg={
     3:2,
