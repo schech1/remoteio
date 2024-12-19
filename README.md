@@ -18,22 +18,18 @@ While ident and obj_type are needed by remoteio the parameter *args and **kwargs
 3. A command like blink(**kwargs) or on(*args) is to be used as described in the API of gpiozero.
    Further remoteio supports on(on_time) for a short impuls realized by blink(on_time=on_time,off_time=0,n=1).
 
-4. remoteio supports a Remoteio_Compositum device, defined by having the attributes on,off,toggle,blink. It supports
+4. remoteio supports a Remoteio_LEDCompositum device, defined by having the attributes on,off,toggle,blink. It supports
   pulse for the gpiozero devices of the Compositum that can pulse. The functions getClientDevice(), setClientDevice() are used to make messages more readable by
-  the user. At this purpose gpiozero offers **namedpins and *_order. Note that the devices used in Remote_Compositum may be situated on different server.
+  the user. At this purpose gpiozero offers **namedpins and *_order. Note that the devices used in Remote_LEDCompositum may be situated on different server.
 
 5. remoteio supports expressions like led.value=... by the use of properties.
    The attributes of a gpiozero device are reflected in the corresponding remoteio device. Remoteio differs between functions, attributes that are only readable and writeable attributes.
    The remoteio_client.py acts as a kernel for all devices, so that all remote devices are programmed in the same manner.
 
-6. As extensions also non gpio zero devices may be used. But these classes must be wrapped in a form that they can be applied. As example Remote_W1Device in remote_extensions.py and
-   W1Device in remote_wrapper.py are realized in order to read temperatures. Another Compositum is Remote_State in remote_extensions.py. For each remote device x the expression x.value
-   reads the value of the device x on the server. Remote_State(x1,x2,...).value furnishes x1.value, x2.value,... These values are locally memorized in x1._value, x2._value, ...,
-   i.e. the actual state of the device system.
-   You can then take a decision how to change the system without provocating a high traffic between client and server. Remember, that the devices used here need not to be situated on the same server.
-   
+6. As extensions also non gpio zero devices may be used. But these classes must be wrapped in a form that they can be applied. As example Remote_W1ThermDevice in the folder remoteio_extensions and
+   W1ThermDevice in the folder remoteio_wrapper are realized in order to read temperatures. 
 
-For details study the examples in controller.py
+For details study the documentation in remoteio/remoteio_doku and the examples in controller.py
       
 
 ## Server (remote Raspberry Pi)
