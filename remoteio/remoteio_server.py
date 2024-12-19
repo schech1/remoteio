@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
 import socket
-from multiprocessing import Process, Queue, Event, Lock,Pipe, current_process,parent_process                       
-import time
-import logging
-from remoteio import PORT, evalAllowed
-from remoteio.remoteio_wrapper import *
-import threading 
-from gpiozero import * 
-from colorzero import Color,Red,Green,Blue
+from multiprocessing import Process, Queue, Event, Lock,Pipe, current_process,parent_process,active_children                       
+import threading
+
+from gpiozero import *
 from gpiozero.tones import Tone
+from colorzero import Color,Red,Green,Blue
+
 import warnings   
 
-logging.basicConfig(level=logging.DEBUG,
-                      format="%(asctime)s [%(levelname)-8s] [%(module)s:%(funcName)s]: %(message)s",
-                      datefmt="%d.%m.%Y %H:%M:%S")
-#logging.basicConfig(level=logging.INFO,style="{",format="{asctime}[{levelname:8}][{funcName:8},{lineno}]{message}")
-logger = logging.getLogger(name="remoteio")
-logger.setLevel(logging.DEBUG)
+from remoteio.remoteio_constants import *
+from remoteio.remoteio_helper import *
+from remoteio.remoteio_wrapper import *
+
+from time import sleep
+import logging
+logger = logging.getLogger(__name__)
 #####################################################
 
 
@@ -49,7 +48,6 @@ def create_Device(Dict:dict):
     rdevice=None
 
     try:
-        
         #### Dict1 only with parameters of interest for _create
         Dict1=Dict.copy()
         ident=Dict1.pop('ident')
@@ -67,12 +65,14 @@ def create_Device(Dict:dict):
             rdevice=Klasse(**Dict1)
         logger.info(f"{Dict} generated")
 
+
     except Exception as e:
         logger.info(str(e))
         logger.info(f"{Dict}  not generated")
         rdevice=None
     finally:
         return rdevice
+       
 
   
 
@@ -81,7 +81,7 @@ def create_Device(Dict:dict):
 #############################################################
 def handle_Device(qu:Queue,ev,lo,child_conn):
     '''
-     realized as multiprocessing.Process 
+     each remote device is represented by a multiprocessing.Process 
 
     '''
     Dict=qu.get()[0]
@@ -107,14 +107,12 @@ def handle_Device(qu:Queue,ev,lo,child_conn):
                 if ev.is_set() or not parent_process().is_alive():
                     ende=True
                     break
-                time.sleep(0.005) # for that RPI not gets hot
+                sleep(0.005) # for that RPI not gets hot
             if ende==True:
                 break
 
-            
             # perform next task in queue
             Dict = qu.get()[0] 
-
             #### Dict1 only with parameters of interest for rdevice functions
             Dict1=Dict.copy()
             obj_type=Dict1.pop('obj_type')
@@ -172,8 +170,8 @@ def handle_Device(qu:Queue,ev,lo,child_conn):
                     logger.info(f"{Dict}") 
 
             except Exception as e:
-                logger.info(str(e))
-                logger.info(f"{e.__class__}: {str(e)}")
+                logger.error(str(e))
+                logger.error(f"{e.__class__}: {str(e)}")
                 logger.info(f"handle_Device: ({ident} ,{obj_type}) {command}: command error or property not supported")
                 child_conn.send(data)
                 continue
@@ -185,10 +183,11 @@ def handle_Device(qu:Queue,ev,lo,child_conn):
             with lo:
                 try:
                     rdevice.close()
+                    logger.info(f"{ident} closed")
                 except:
                     logger.error(f"close von {ident} rdevice failed") 
             logger.info(f"handle_Device: Released rdevice {ident}")
-        logger.info(f"Handle_Device of rdevice {ident} terminated")        
+        logger.info(f"handle_Device of rdevice {ident} terminated")        
     
 ################################################################  
 def get_rdeviceParams(rdeviceParams:str)->dict:
@@ -303,7 +302,8 @@ def dispatchDevice(conn,addr,client_port,lo,rdevice_dict,paramString):
         #soft kill of handle_Device
         #remove rdevice entry from rdevice_dict
         if ident in rdevice_dict.keys():
-            rdevice_dict[ident][1].set
+            while rdevice_dict[ident][3].is_alive():
+                pass
             rdevice_dict.pop(ident)
             return    
 
@@ -356,7 +356,6 @@ def run_server(port=PORT):
         server_socket.listen(5)
 
         logger.info(f"remoteio listening on port {port}...")
-
         while True:
             conn, addr = server_socket.accept()
             logger.info(f"Connection from {addr}")
@@ -371,22 +370,39 @@ def run_server(port=PORT):
 
 if __name__ == "__main__":
     import sys
-    import multiprocessing as mp
+
+    import logging
+    # instantiate logger
+    logging.basicConfig(level=logging.INFO,style="{",format="{asctime} {name} {lineno}: [{levelname:8}]{message}")
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    logger.info('start')
 
     try: 
 
         run_server()
 
-        #server_8509=Process(target=run_server, args=(8509,'nowait'))
+        #server_8509=Process(target=run_server, args=(8509))
         #server_8509.start()
-        #server_8510=Process(target=run_server, args=(8510,'wait'))
+        #server_8510=Process(target=run_server, args=(8510))
         #server_8510.start()
     except KeyboardInterrupt as e:  
         logger.error(e)      
     except Exception as e:
         logger.error(e)
     finally:
-        for child in mp.active_children():
-            child.kill()
-        sys.exit()
+        # get all active child processes
+        active = active_children()
+        print(f'Active Children: {len(active)}')
+        # terminate all active children
+        for child in active:
+            child.terminate()
+        # block until all children have closed
+        for child in active:
+            child.join()
+        # report active children
+        active = active_children()
+        print(f'Active Children: {len(active)}')
+        sys.exit(0)
+            
 
