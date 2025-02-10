@@ -1,23 +1,28 @@
 #!/usr/bin/env python3
 import socket
-from time import sleep 
-import builtins
 from gpiozero import Device 
 from threading import Thread,Event,Timer
 from multiprocessing import Lock
-from remoteio import PORT, PIN_MAP_bg,getFunctionName
-
 from typing import Generator
 from inspect import isgeneratorfunction, signature, isfunction,ismethod
+
+from remoteio.remoteio_constants import PORT
+
+from time import sleep 
 import logging
-logging.basicConfig(level=logging.INFO,style="{",format="{asctime}[{levelname:8}]{message}")
-logger = logging.getLogger(name="remoteio")
-logger.setLevel(logging.INFO)
+logger = logging.getLogger(__name__)
 
 def timeOut(obj_type, command):
     logger.info(f"({obj_type},{command}) timed out")
 
+######################################################################################
+######################################################################################
 class RemoteSupervisor():
+    '''
+    is responsible for server_idents and client_idents
+
+    guarantees uniqeness of idents
+    '''
 
 
     ## translator: server_ident client_ident
@@ -44,6 +49,14 @@ class RemoteSupervisor():
             index+=1
         ret=f"dev_{index}"
         return ret
+    
+    @classmethod
+    def delIdent(cls,server_ident):
+        ret=None
+        if server_ident in RemoteSupervisor._ident_dict.keys():
+            ret=RemoteSupervisor._ident_dict.pop(server_ident)
+        return ret
+    
     @classmethod
     def setClientIdent(cls,server_ident,client_ident):
         if RemoteSupervisor.client_identExists(client_ident):
@@ -51,6 +64,13 @@ class RemoteSupervisor():
         RemoteSupervisor._ident_dict[server_ident]=client_ident
 
 class RemoteServer:  
+    '''
+    establishes the connection to the remote server
+
+    Parameters:
+        server_ip 
+        server_port=8509
+    '''
     def __init__(self, server_ip, server_port=PORT):                                 
         self.server_ip = server_ip
         self.server_port = server_port
@@ -69,16 +89,27 @@ class RemoteServer:
 ############################################################
 ############################################################
 class RemoteDevice:
+    '''
+    a basis class that performs the traffic with the remote server and delegates tasks to the remote devices
+
+    realizes source, value and values properties for all subclasses
+    
+    **kwargs are named parameters that are delegated to the remote device 
+    
+    Parameters:
+        remote_server:RemoteServer
+        obj_type:str
+        **kwargs
+    '''
+     
     def __init__(self, remote_server, obj_type, **kwargs):
         self.remote_server=remote_server
         self.client_socket=remote_server.client_socket
-        self.command='off'
 
         self.ident=RemoteSupervisor.genServerIdent()
         self.setClientIdent(self.ident)
-        
-        self.kwargs=kwargs
-        self._create_kwargs=None
+
+        self._create_kwargs=kwargs
         self.obj_type=obj_type
         self._value=None
         self._closed=False
@@ -99,7 +130,7 @@ class RemoteDevice:
         RemoteSupervisor.setClientIdent(self.ident,ident)
 
     def _create(self):
-        self.func_exec('_create',**self.kwargs)
+        self.func_exec('_create',**self._create_kwargs)
         self._value=self.getProperty('value') 
 
     def get(self,**my_kwargs):
@@ -117,7 +148,6 @@ class RemoteDevice:
         self.func_exec('set',**my_kwargs)
 
     def close(self):
-        self.command='close'
         if self._closed==True:
             raise ValueError("Device is closed!")
         my_kwargs={}
@@ -125,7 +155,6 @@ class RemoteDevice:
         self._closed=True
 
     def open(self):
-        self.command='open'
         ## is open ##
         if self._closed==False:
             raise ValueError("Device is open!")
@@ -139,50 +168,62 @@ class RemoteDevice:
             return self.get(property=(my_property,))[my_property]
         except:
             return None
-        
-    def execute(self):
-        # data transfer
+
+    def func_exec(self,command,**func_kwargs):
+        ret=None
+        data=self.prepareData(command,**func_kwargs)  
+        ret=self.sendrecvData(data)  
+        return ret
+
+    def prepareData(self,command,**func_kwargs):
+        ## reduce traffic on line ##
+        if self._closed:
+            return None
+
+        # preparing data
         data=f"{self.ident} {self.obj_type} "
-        data +=  f"{self.command} "
+        data +=  f"{command} "
         
-        match self.command:
+        match command:
             case 'get': # only verification
-                if self.kwargs=={}: 
-                    logger.info(f"{self.obj_type} {self.command} refused: no parameter ")
+                if func_kwargs=={}: 
+                    logger.info(f"{self.obj_type} {command} refused: no parameter ")
                     return None
-                if len(self.kwargs) != 1: 
-                    logger.info(f"{self.obj_type} {self.command} refused: exact one parameter allowed")
+                if len(func_kwargs) != 1: 
+                    logger.info(f"{self.obj_type} {command} refused: exact one parameter allowed")
                     return None
-                if 'property' not in self.kwargs.keys():
-                    logger.info(f"{self.obj_type} {self.command} refused: expected property=(...)")
+                if 'property' not in func_kwargs.keys():
+                    logger.info(f"{self.obj_type} {command} refused: expected property=(...)")
                     return None
                 ## property=... expects a property as string or a list of properties as strings
-                for value in self.kwargs.values():
+                for value in func_kwargs.values():
                     if type(value)==str:
                         value=(value,)
                     if type(value)!=tuple:
-                        logger.info(f"{self.obj_type} {self.command} refused: property must be tuple")
+                        logger.info(f"{self.obj_type} {command} refused: property must be tuple")
                         return None
                     data+=f"{'property'}={value};"
                 data=data[0:-1]
                 data+='\n'
             case 'set': 
-                    if self.kwargs=={}: 
-                        logger.info(f"{self.obj_type} {self.command} refused:no parameter")
+                    if func_kwargs=={}: 
+                        logger.info(f"{self.obj_type} {command} refused:no parameter")
                         return None
-                    for key, value in self.kwargs.items():
+                    for key, value in func_kwargs.items():
                         data+=f"{key}={value};"
-                    if self.kwargs!={}:
+                    if func_kwargs!={}:
                         data=data[0:-1]
                         data+='\n'
                                 
             case _: 
-                for key, value in self.kwargs.items():
+                for key, value in func_kwargs.items():
                     data+=f"{key}={value};"
-                if self.kwargs!={}:
+                if func_kwargs!={}:
                     data=data[0:-1]
                 data+='\n'
-
+        return data
+    
+    def sendrecvData(self,data):
         with self.remote_server.conn_lock:
             self.client_socket.sendall(data.encode())
             self.client_socket.settimeout(3.0)
@@ -201,17 +242,7 @@ class RemoteDevice:
                 case _:
                     return None
             
-    def func_exec(self,name,**func_kwargs):
-        ## reduce traffic on line ##
-        if self._closed:
-            return None
-        self.command=name
-        self.kwargs.clear()
 
-        for key,value in func_kwargs.items():
-            self.kwargs[key]=value
-        ret=self.execute()
-        return ret
 
 ####################################################################
 ## property source
@@ -223,12 +254,10 @@ class RemoteDevice:
         return self._source
     @source.setter
     def source(self, quelle):
-        self.command='source'
         if self._sourceThread !=None:
             #soft kill of thread
             self._sourceEvent.set()
-            while self._sourceEvent.is_set():
-                pass
+            self._sourceThread.join()
             self._source=None
             self._sourceThread = None
         if quelle==None:   
@@ -299,11 +328,26 @@ class RemoteDevice:
 ##########################################################################
 
 class RemoteDigitalDevice(RemoteDevice):
+    '''
+        a subclass of RemoteDevice
+
+        the use of RemoteDigitalDevice as subclass of RemoteDevice is more based on which functions can be more centralized
+        than a distinction of special devices
+
+        treats button-specific functions like when_pressed, when_released, when_held,
+        wait_for_held, wait_for released in an abstract way by using a dictionary that is
+        furnished by concrete devices that supprt gpiozero devices on the server.
+        
+        **kwargs are named parameters that are delegated to the remote device 
+        
+        Parameters:
+            remote_server:RemoteServer
+            obj_type:str
+            **kwargs
+    '''
     def __init__(self, remote_server, obj_type, **kwargs):          
         RemoteDevice.__init__(self,remote_server,obj_type, **kwargs)
 
-        ## for some necessary locking
-        self._create_kwargs=kwargs
         self._Lock = Lock()
         self._create()
   
@@ -326,8 +370,8 @@ class RemoteDigitalDevice(RemoteDevice):
         
         if not thread_dict[when_text][1] is None:
             thread_dict[when_text][0]=None
-            while thread_dict[when_text][1]!= None and thread_dict[when_text][1].is_alive():
-                pass
+            thread_dict[when_text][1].join()
+            thread_dict[when_text][1] = None
         thread_dict[when_text][0]=wert
         thread_dict[when_text][1]=Thread(target=thread_dict[when_text][2], args=(when_text,wert,thread_dict),)
         try:
@@ -368,7 +412,8 @@ class RemoteDigitalDevice(RemoteDevice):
             logger.error(f"{str(e)}")
         finally:
             thread_dict[when_text][0]=None
-            thread_dict[when_text][1]=None     
+            logger.info(f"{when_text}_Thread terminated")
+                
             
 ##################################################################
 ## special treatment for when_held
@@ -384,7 +429,7 @@ class RemoteDigitalDevice(RemoteDevice):
                             if str(param.kind)=='POSITIONAL_OR_KEYWORD':
                                 wh=+1
                                 break
-                        if self.hold_repeat:
+                        while self.hold_repeat:
                             while not thread_dict[when_text][0] is None:
                                 if wh==0:
                                     func()
@@ -398,7 +443,11 @@ class RemoteDigitalDevice(RemoteDevice):
                                 func()
                             else:
                                 func(self)
-                            self.wait_for_release()
+                            while self.value!=0:
+                                if thread_dict[when_text][0] is None:
+                                    break
+                                sleep(self.gen_wait_delay)
+
                         if thread_dict[when_text][0] == None:
                             break
                     else:
@@ -409,9 +458,10 @@ class RemoteDigitalDevice(RemoteDevice):
             logger.error(f"{str(e)}")
         finally:
             thread_dict[when_text][0] = None
-            thread_dict[when_text][1] = None
+            logger.info(f"{when_text}_Thread terminated")
+           
 #########################################################################
-## for parametrizing of wait_for... funtions
+## for parametrizing of wait_for... functions
 #########################################################################
     def _wait_task(self,wait_text,gen_function,**my_kwargs):
         if 'timeout' in my_kwargs.keys():
